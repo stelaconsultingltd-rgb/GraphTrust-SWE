@@ -23,6 +23,9 @@ These are administrative evidence, not benchmark inputs.
   them public after the deadline; inspect attachments before final submission.
 - Saving a Writeup does not submit it. Use its Submit action and verify the
   resulting submitted status. Unsubmitted drafts are ineligible.
+- Join the competition with the submitting account and verify its joined status
+  before submission. Joining, saving a draft and submitting the Writeup are
+  separate requirements; none is inferred from running a Kaggle notebook.
 - Original code is Apache-2.0; preserve third-party licenses. Regenerate source
   snapshots from public upstreams instead of bundling competition data or
   reference answers into the inference resource.

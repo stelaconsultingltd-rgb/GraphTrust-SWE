@@ -1,6 +1,6 @@
 # GraphTrust-SWE resource card
 
-Version: 0.2.0 development, response protocol v2. This resource has implemented CPU and synthetic
+Version: 0.3.0 development, response protocol v2. This resource has implemented CPU and synthetic
 verification; empirical Gemma robustness results require the real pilot and
 frozen holdout. It is intended for research into trust in repository relationship
 metadata, not certification of agent safety or general coding ability.
@@ -38,7 +38,8 @@ unchanged, duplicate, self-loop, and replacement relationships supported anywher
 in the full source-derived graph, including call sites outside packed metadata.
 Requested and achieved severities are both recorded; structural compatibility
 can make the achieved count smaller. The model deletion control matches the
-actual rewired count. CPU diagnostics use three corruption seeds at three
+actual rewired count; its independently sampled removals need not be the same
+original relationships that rewiring replaces. CPU diagnostics use three corruption seeds at three
 severities; the model study uses one fixed seed and nominal 30% corruption.
 
 A shared pack uses lexical issue anchors and supported neighbors, independently

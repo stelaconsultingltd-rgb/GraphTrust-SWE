@@ -139,6 +139,12 @@ under three corruption seeds. The model experiment uses one frozen corruption
 seed and a 30% target. Visible relationship budgets can alter achieved exposure,
 so both full-graph and visible intervention counts must be reported.
 
+For model conditions, construct rewiring first and match deletion to its achieved
+edit count. Deletion samples supported edges independently; those edges need not
+be the originals replaced by rewiring. The contrast therefore compares these two
+seeded mechanisms at equal changed-edge counts, with different remaining graph
+densities, rather than changing the same individual relationships in both ways.
+
 The checker consults the full snapshot's source-derived graph without access to
 intervention labels. Its evidence can exceed the model's truncated source pack.
 Manifests record source spans, retained call sites, and definition-line coverage.
@@ -165,10 +171,12 @@ settings must accompany the final report.
 
 Before the holdout is frozen, the pilot targets ten development issues, six
 conditions, and two seeds. It uses a 4,000-token total input target and at most
-256 output tokens, with thinking disabled. Its gates include parseable outputs,
-memory and time behavior, and evidence that graph citations occur. If a condition
-times out or runs out of memory on at least two pilot issues, all arms receive
-the same reduced budget and a new versioned pilot is run. Switching the primary
+256 output tokens, with thinking disabled. Freeze requires at least 95% timely,
+typed outputs, zero out-of-memory failures, at most one timed-out issue per
+condition, and at least 25% of clean-graph attempts citing a supplied relationship.
+Semantic invalid predictions are reported separately. Any memory failure, or
+timeouts on at least two issues in a condition, triggers the same reduced budget
+for all arms and a complete new versioned pilot. Switching the primary
 runtime to E2B GGUF is a protocol change, not a hidden substitution mid-holdout.
 
 The model returns structured JSON with ranked file paths, source IDs, graph edge
