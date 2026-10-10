@@ -51,7 +51,27 @@ class _Scope:
         self.bindings.setdefault(name, []).append(value)
 
 
-class _Bindings(ast.NodeVisitor):
+class _IterativeGenericVisitor(ast.NodeVisitor):
+    """Keep generic expression depth off the Python stack.
+
+    Custom visitors still manage their own lexical scope and child traversal.
+    Their recursive dispatch and name resolution retain separate depth limits.
+    """
+
+    def generic_visit(self, node: ast.AST) -> None:
+        pending = list(reversed(list(ast.iter_child_nodes(node))))
+        while pending:
+            child = pending.pop()
+            visitor = getattr(self, "visit_" + child.__class__.__name__, None)
+            if visitor is None:
+                # Expanding only generic nodes preserves the original
+                # depth-first order and custom visitors' scope entry/exit.
+                pending.extend(reversed(list(ast.iter_child_nodes(child))))
+            else:
+                visitor(child)
+
+
+class _Bindings(_IterativeGenericVisitor):
     """Collect one lexical scope, avoiding nested definition bodies."""
 
     def __init__(self, scope: _Scope, extractor: "_Extractor") -> None:
@@ -379,7 +399,7 @@ class _Extractor:
             _Walker(self, path).visit(tree)
 
 
-class _Walker(ast.NodeVisitor):
+class _Walker(_IterativeGenericVisitor):
     def __init__(self, extractor: _Extractor, path: str, collect_mutations: bool = False) -> None:
         self.extractor, self.path = extractor, path
         self.scope = extractor.paths[path]

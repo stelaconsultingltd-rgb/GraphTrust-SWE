@@ -92,7 +92,10 @@ Before releasing empirical results, create and audit an explicit public result
 export containing permitted response records, metadata-only contexts, manifests,
 and reports. Exclude raw prompts/source packs, patches, evaluator tests, gold
 labels, credentials, and signed URLs; regenerate evaluator inputs for independent
-scoring. There is no public result export or empirical evidence in this preview.
+scoring. The prospective `graphtrust export` implementation and its boundary tests
+are documented in [PUBLIC_RESULTS_EXPORT.md](PUBLIC_RESULTS_EXPORT.md). No actual
+empirical cohort has been exported or accepted by these software tests. There is
+no empirical evidence in this implementation preview.
 Complete negative or positive results must be reported without selective removal.
 
 Only then replace paper placeholders with traceable tables/figures, review claims

@@ -277,6 +277,13 @@ strata. Every plotted value comes from supplied records; empty runs produce no
 empirical figures. Checker preprocessing time must be measured separately before
 claiming an end-to-end verification cost.
 
+Before publishing empirical results, use the explicit local `graphtrust export`
+command described in [PUBLIC_RESULTS_EXPORT.md](PUBLIC_RESULTS_EXPORT.md). It
+validates complete current v2 records/journals and accepted identities, retains
+failures, redacts unsafe ranked slots with original hashes, and regenerates public
+aggregates and optional figures. Raw prompts, source, gold labels, and error text
+remain private. The evaluator `results.csv` contributes only joined scalar metrics.
+
 ## Licensing and release audit
 
 Original GraphTrust-SWE code and synthetic fixtures are Apache 2.0. Upstream

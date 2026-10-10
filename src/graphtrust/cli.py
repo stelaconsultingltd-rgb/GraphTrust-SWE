@@ -72,6 +72,17 @@ def main(argv=None) -> None:
     report.add_argument("--contexts", required=True)
     report.add_argument("--gold", required=True)
     report.add_argument("--out", required=True)
+    export = commands.add_parser("export", help="Create a fresh allowlisted public results directory locally; no publishing")
+    export.add_argument("--records", required=True)
+    export.add_argument("--contexts", required=True)
+    export.add_argument("--manifest", required=True)
+    export.add_argument("--freeze", required=True)
+    export.add_argument("--journal")
+    export.add_argument("--scored", help="Optional evaluator results.csv; exports scalar outcomes, never reference file labels")
+    export.add_argument("--primary-manifest", help="Required for the fixed replication cohort")
+    export.add_argument("--runtime-lock", help="Required accepted GGUF development runtime for replication")
+    export.add_argument("--figures", action="store_true", help="Regenerate PNG figures from the allowlisted aggregate; requires plots extra")
+    export.add_argument("--out", required=True)
     freeze = commands.add_parser("freeze", help="Freeze only after a complete real, exact-tokenizer pilot passes gates")
     freeze.add_argument("--pilot", default="runs/pilot")
     freeze.add_argument("--out", default="runs/protocol-frozen.json")
@@ -169,6 +180,11 @@ def main(argv=None) -> None:
     elif args.command == "freeze":
         from .pipeline import freeze_protocol
         _print(freeze_protocol(_protocol(args), args.pilot, args.out))
+    elif args.command == "export":
+        from .exporter import export_public_results
+        _print(export_public_results(args.records, args.contexts, args.manifest, args.freeze, args.out,
+                                     journal=args.journal, scored=args.scored, figures=args.figures,
+                                     primary_manifest=args.primary_manifest, runtime_lock=args.runtime_lock))
     elif args.command == "validate":
         from .io import digest
         directory = Path(args.directory)

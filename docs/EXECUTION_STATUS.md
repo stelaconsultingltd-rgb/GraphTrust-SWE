@@ -1,105 +1,79 @@
 # Execution status — 10 October 2026
 
-The resource implementation is available. The empirical study and competition
-submission are pending; no Gemma findings or winning claims are reported.
+The public implementation preview is available at
+[GraphTrust-SWE alpha.2](https://github.com/stelaconsultingltd-rgb/GraphTrust-SWE/releases/tag/v0.1.0-alpha.2).
+The final scientific study, empirical release and Kaggle submission remain pending.
+Software fixtures and synthetic demo outputs are not research evidence.
 
-## Verified locally
+## Verified development evidence
 
-- Pinned SWE-bench Lite: 300 test and 23 development issues. Twenty development
-  issues belong to the four protocol repositories. Raw labeled Parquet and gold
-  are isolated under evaluator storage; checksums validate.
-- Conservative graph extraction, deterministic interventions, matched actual
-  corruption counts, fixed source contexts, checker, resumable inference journals,
-  metrics, paired uncertainty, and three report figures are implemented.
-- The latest integrated suite passed 154 tests with zero failures in 25.227
-  seconds: `runs/tests-current-integration-v2.log`. This supersedes concurrent
-  earlier test evidence. Historical CPU-runner and wheel/notebook reviews passed
-  131 and 127 tests respectively before the experiment-bundler tests were added.
-- A fresh wheel install outside the checkout completed the six-arm, twelve-call
-  offline synthetic demo and manifest validation: `runs/wheel-check/output/`.
-- Both notebooks executed in their default modes. The Kaggle notebook's default
-  mode performs no model inference. Evidence: `runs/notebook-check-final-v2/`.
-- Current executable source fingerprint:
-  `bc084db6c4922dda6c05ed69e8709103e3db659526352596d8db28538d0697ae`.
-  Canonical protocol fingerprint:
-  `f12e3788aff29530923d70b2af732ed8d63a43125aa171168579bc6bd5166dff`.
-  The matching wheel SHA-256 is
-  `c492f95f679792c81e9063d73825179dcab686e5bfadb1a63f05b8e256c77b71`.
-  The current independently validated v9 pilot script is 175,175 bytes, SHA-256
-  `998af06694c8a8b59d7b0a1b41fd1df2629bcd4ce1d6a2eff4a642a8e322f227`.
-  The 175,063-byte script documented in earlier reviews is historical v8.
+The pinned SWE-bench Lite corpus contains 300 test and 23 development issues.
+Reference patches and added tests remain in evaluator-only storage. Structural
+eligibility, contexts and interventions never use those labels.
 
-## Running and remaining work
+A real Gemma 4 E2B development pilot completed all 120 scheduled attempts on
+10 October: ten development issues, six conditions and two sampling seeds.
+An independent audit found 118 timely, typed outputs (98.33%), 83 valid predictions,
+35 predictions with semantic validity flags and two parse failures. These status
+categories account for all attempts; validity flags overlap. There were no recorded
+retries, timeouts or out-of-memory failures. Ten of twenty clean-graph attempts
+cited a valid visible relationship. No reference-edit localization scoring or
+confidence intervals were produced from this audit.
 
-The full 300-issue CPU preparation runs to `runs/cpu-test/`, with progress and
-failures in `runs/prepare-test-v8.log`. Earlier interrupted workers left three
-writer locks with dead process IDs; their original records were preserved in
-`runs/stale-lock-evidence/`. Those cases must be retried before final CPU counts.
-Seventeen pytest snapshot failures are confirmed Windows long-path acquisition
-errors, with `LongPathsEnabled=0`; recovery is in progress. They are not structural
-eligibility exclusions or evidence about graph quality.
+That pilot belongs to package 0.2.0 and implementation fingerprint
+`3a5cd6d5252efc932d50dbb831d3607558363f5035bd3509fd2599629310b792`.
+Its exact official Kaggle checkpoint fingerprint is
+`8463a7f638c3087f7869b42db1a70578be5bee5f727a7579bc5553b46aea414b`;
+its tokenizer fingerprint is
+`ca7db376622726274dd8d16d6fa0a7fe86001167152052945d235c3b8b13bbf6`.
+All records, attempt starts, environment and source/context identities were
+preserved locally. Earlier tokenizer and output-contract failures remain part of
+the development history; their responses have not been salvaged or reclassified.
 
-Development preparation in `runs/dev-cpu-v8/` completed 23 cases with zero
-errors. Its conservative byte bound gives no provisional qualifiers; this does
-not exclude those cases from exact model-token qualification. Exact E2B
-tokenization evaluates every successful development case in
-`runs/pilot-tokenized-v8/`, now complete: 16 of 20 structural qualifiers, ten
-selected issues, sixty contexts, 2,749–3,928 input tokens, and 11–15 files per
-issue. All 73 clean and 20 false relationship callsites are visible. Prompt,
-source, token and manifest checks pass. These are structural CPU diagnostics,
-not model results. The final manual audit still finds missing target definitions
-and an omitted import; full binding evidence is not guaranteed by callsite visibility.
+## Prospective package 0.3.0
 
-The context audit found sparse visible callsites: six of seventy-one clean
-relationships and two of twenty false relationships in the historical v6 pack.
-Scientific review prompted one bounded development revision before model calls:
-caller excerpts prioritize deterministic clean call lines, and metadata retains
-only relationships with visible original callsites before intervention. Existing
-edge/perturbability qualification applies to that subset, with shortfalls
-disclosed. The checker uses the full snapshot; binding-visibility limits and this
-access difference remain explicit.
+The original extractor failed on a deeply nested SymPy source AST. The revised
+generic traversal retains depth-first order and custom scope handling while
+using an explicit stack. Independent extraction of the previously failing full
+snapshot succeeded: 1,518 Python files, 36,107 nodes, 145,373 supported relationships,
+150,067 unresolved bindings and zero extraction errors. This is CPU validation,
+not a model finding. Custom visitors and binding resolution retain documented
+depth limits. The revised extractor fingerprint is
+`4aa19292fa5120f4bb3971d5ccbd480bb669f9ffeac3cb5778d35620e8c39c5f`.
 
-The literature comparison and pinned comparator sources are documented in
-`RELATED_WORK.md` and `LITERATURE_LOCK.json`. Official requirements are verified
-in `COMPETITION_REQUIREMENTS.md`. Official E4B QAT Q4_0 GGUF checkpoint/file
-identifiers and a pinned source build are in `MODEL_LOCK.json` and
-`GGUF_REPLICATION.md`; their actual runtime remains untested.
+The prospective public exporter retains every terminal attempt, uses explicit
+metadata and outcome allowlists, redacts invalid ranked slots without filling
+them, and links exported rows to original canonical record hashes. It excludes
+raw prompts, responses, source packs and evaluator labels. Matching source,
+snapshot, tokenizer and model identities are checked before publication;
+complete scored joins regenerate aggregate reports and figures. Its combined
+test suite and independent review are in progress.
 
-The private E2B v8 development pilot started on 10 October at approximately
-13:18 Perth, version 2 of `steve1136/graphtrust-swe-e2b-development-pilot`.
-The live metadata confirms T4, internet enabled, private visibility and official
-`google/gemma-4/Transformers/gemma-4-e2b-it/1` attached. The connector's initial
-QuickSave silently dropped model attachments; the editor attachment and saved
-run corrected this. The supervisor permits at most 120 calls and three hours.
-Launch metadata and screenshot are in `runs/kaggle-pilot-v8/`. Version 2 stopped
-before any localization calls: its checkpoint tokenizer identity differed from
-the local Hugging Face tokenizer. Official per-file downloads confirm identical
-vocabulary/processor/config bytes but different tokenizer configuration and chat
-template bytes. The original failure and environment logs are preserved under
-`version-2-output/`; about 199 seconds of GPU quota were used. All contexts must be
-regenerated against the actual Kaggle version-1 tokenizer before another run.
-No mismatch guard is relaxed. Fresh v9 materialization and independent inspection
-confirm byte-identical contexts and selection; only the manifest now pins the
-actual Kaggle tokenizer `ca7db376622726274dd8d16d6fa0a7fe86001167152052945d235c3b8b13bbf6`.
-The v9 script's SHA-256 is
-`998af06694c8a8b59d7b0a1b41fd1df2629bcd4ce1d6a2eff4a642a8e322f227`.
-An editor Quick Save verified exact saved-source bytes and the retained official
-model attachment without consuming GPU quota. The corrected pilot started as
-Kaggle version 4 at approximately 13:41 Perth. It is running; actual processor
-checks, output quality and acceptance remain pending. V8 failure evidence is
-retained. Checkpoint/backend diagnostics are now saved before preflight guards.
-Preserve actual environment/checkpoint fingerprints, outputs, and gate failures.
-Freeze only if the complete real pilot passes; revise presentation/budgets only
-on development cases if it fails. The holdout requires the accepted frozen code,
-protocol, tokenizer, and backend. Replication must remain a balanced subset of
-that primary cohort, even if the second runtime fails.
+These changes alter the study implementation identity. The package 0.2.0 pilot
+cannot freeze package 0.3.0. All repository graphs and contexts will be regenerated
+in fresh directories, followed by a complete real development pilot against the
+final reviewed package. There is no accepted final package 0.3.0 freeze or
+holdout model result.
 
-The primary study, GGUF replication, optional repair demonstration, empirical
-paper results, public release tag/links, and actual Kaggle Writeup submission
-have not been completed. The methods draft is explicitly labeled accordingly.
-The optional repair demonstration depends on completed primary evidence, quota,
-and locally validated environments; the local Docker engine is currently stopped.
+## Compute and remaining work
 
-The schedule and compute limits remain those in the approved plan: free compute,
-40 GPU quota hours total, no training or paid APIs, internal submission by
-11 November and official deadline 13 November at 07:59 Perth.
+The earlier CPU preparation attempted all 300 test cases and recorded 299
+successful cases plus the diagnosed SymPy recursion error. Legacy continuation
+and partial diagnostics retain their original identities. They do not establish
+a completed final CPU resource. A separately reviewed one-shot pipeline will
+regenerate all 323 cases across 320 unique snapshots; it preserves source and
+evaluator bytes and imports no old graph caches.
+
+A CPU-only Kaggle build produced the pinned CUDA Gemma 4 GGUF runtime wheel.
+Independent downloads verified its bytes, source pins and CUDA build settings.
+The wheel is 269,105,486 bytes, SHA-256
+`bf976c8a7bc51a812bb742d99559bfcdba4593103fce6b548e546589dc86e77d`.
+Model loading, inference and a replication runtime lock remain untested.
+
+The primary experiment, optional GGUF replication, paired issue-level statistics,
+three traceable figures, final paper, empirical release and actual Kaggle Writeup
+submission remain to be completed. The optional repair demonstration is deferred
+until the primary study finishes and quota permits it. The approved limits remain
+free compute, 40 GPU hours, no training or paid APIs, internal submission by
+11 November and official deadline 13 November 2026 at 07:59 Perth. Winning is
+not guaranteed.

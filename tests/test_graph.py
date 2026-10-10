@@ -1,9 +1,11 @@
+import ast
 import hashlib
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
-from graphtrust.graph import build_graph
+from graphtrust.graph import _Bindings, _Walker, build_graph
 
 
 class GraphTests(unittest.TestCase):
@@ -169,6 +171,55 @@ def run(items):
     def test_missing_root_is_rejected(self):
         with self.assertRaises(ValueError):
             build_graph(self.root / "missing")
+
+    def test_deep_lambda_expression_preserves_supported_call(self):
+        source = "def wanted(): pass\nf = lambda: wanted()" + " + 0" * 600 + "\n"
+        self.write("deep.py", source)
+        graph = build_graph(self.root)
+        self.assertFalse(graph["errors"])
+        self.assertEqual(len(graph["edges"]), 1)
+        edge = graph["edges"][0]
+        self.assertEqual((edge["source"], edge["target"], edge["line"], edge["expression"]),
+                         ("deep.py::<module>", "deep.py::wanted", 2, "wanted"))
+        self.assertEqual(graph["snapshot"]["files"][0]["sha256"], hashlib.sha256(source.encode()).hexdigest())
+
+    def test_deep_function_expression_preserves_lexical_scope(self):
+        source = "def wanted(): pass\ndef run():\n    return wanted()" + " + 0" * 600 + "\nwanted()\n"
+        self.write("deep.py", source)
+        graph = build_graph(self.root)
+        self.assertFalse(graph["errors"])
+        self.assertEqual(self.relationships(graph),
+                         {("deep.py::run", "deep.py::wanted"), ("deep.py::<module>", "deep.py::wanted")})
+        self.assertEqual({edge["line"] for edge in graph["edges"]}, {3, 4})
+
+    def test_iterative_generic_walk_preserves_original_scope_and_mutation_outputs(self):
+        self.write("main.py", """def wanted(): pass
+def outer():
+    x = wanted
+    def inner():
+        nonlocal x
+        x = 3
+    inner()
+    x()
+def closure():
+    y = wanted
+    return lambda: y()
+def shadow():
+    return [wanted() for wanted in [3]]
+class Known:
+    @staticmethod
+    def method(): wanted()
+Known.method()
+wanted()
+outer()
+Known.method = 3
+Known.method()
+f = lambda: wanted() + wanted()
+""")
+        with patch.object(_Bindings, "generic_visit", ast.NodeVisitor.generic_visit), \
+                patch.object(_Walker, "generic_visit", ast.NodeVisitor.generic_visit):
+            original = build_graph(self.root)
+        self.assertEqual(original, build_graph(self.root))
 
     def test_global_nonlocal_pattern_and_lambda_rebinding_is_conservative(self):
         self.write("main.py", """def changed():

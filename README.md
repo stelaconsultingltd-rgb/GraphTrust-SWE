@@ -6,9 +6,11 @@ relationships with false relationships while keeping the source pack identical.
 The [implementation preview](https://github.com/stelaconsultingltd-rgb/GraphTrust-SWE/releases/tag/v0.1.0-alpha.2)
 provides the Apache-2.0 software, offline fixtures, and reproduction tools.
 
-**Research status:** implementation and synthetic verification are available.
-Synthetic outputs are never evidence about Gemma. The primary model study is not
-complete and the protocol must pass a real development pilot before it is frozen.
+**Research status:** implementation, synthetic verification and an accepted real
+package 0.2.0 development pilot are available. Synthetic outputs are never evidence
+about Gemma. The prospective package 0.3.0 requires regenerated graphs and a fresh
+matching pilot before the final study freezes. The primary model study remains
+pending; see [execution status](docs/EXECUTION_STATUS.md).
 See [the protocol](configs/protocol.json), [research draft](docs/PAPER_DRAFT.md),
 and [reproduction instructions](docs/REPRODUCIBILITY.md).
 The [resource card](docs/RESOURCE_CARD.md) documents schemas, intended use,
@@ -91,6 +93,11 @@ V2 changes require fresh contexts and a complete fresh 120-call development
 pilot before freeze. Earlier v1 logs remain immutable and can be reported under
 their original scoring rule; they cannot satisfy the v2 pilot or be resumed into
 a v2 log.
+
+After complete inference and evaluator scoring, use
+[the public result exporter](docs/PUBLIC_RESULTS_EXPORT.md) to create a reviewed
+metadata and metrics release with original record-hash lineage. Raw prompts,
+responses, source packs and evaluator labels remain private.
 
 ## Scientific boundaries
 

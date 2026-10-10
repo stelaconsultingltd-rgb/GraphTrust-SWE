@@ -1,4 +1,20 @@
-# Implementation preview: v0.1.0-alpha.2
+# Prospective package 0.3.0 — unreleased
+
+This revision adds explicit-stack generic AST traversal for the previously
+failing deeply nested SymPy snapshot and an allowlisted empirical-result exporter.
+The exporter retains failed attempts and ranked invalid-slot hashes, checks
+matched snapshot/tokenizer/model identities, and regenerates reports without
+publishing evaluator labels or raw model responses.
+
+A complete real package 0.2.0 development pilot passed its preregistered gates.
+It remains evidence for that earlier implementation. Package 0.3.0 changes the
+implementation and extractor identity and requires fresh graphs, contexts and
+a complete matching real pilot before the final study can freeze. No holdout
+robustness result or competition submission is claimed. See
+[execution status](docs/EXECUTION_STATUS.md) and
+[public export documentation](docs/PUBLIC_RESULTS_EXPORT.md).
+
+# Historical implementation preview: v0.1.0-alpha.2
 
 This preview provides the GraphTrust-SWE software resource: conservative Python
 relationship extraction, deterministic deletion/rewiring, fixed source contexts,

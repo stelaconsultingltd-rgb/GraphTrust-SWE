@@ -91,6 +91,13 @@ The experiment concerns supplied metadata under a fixed source budget. It does
 not establish behavior during unrestricted repository navigation or successful
 repair. Quantization and runtime differences prevent a clean model-size claim.
 Graph extraction can miss real relationships; checker ambiguity is not falsity.
+Generic AST traversal uses an explicit stack for deep ordinary expressions.
+Custom visitor callbacks and recursive scope/name resolution retain depth
+limits; sufficiently deep custom syntax can still produce an explicit
+preparation error. This recovery does not make extraction complete or remove
+every recursion limit. Changing the extractor fingerprint requires fresh graph
+extraction and preparation records; old caches must never be relabeled as output
+from the new extractor.
 Reference edits are not definitive root-cause labels. Negative findings remain
 publishable, and completed calls never determine cohort membership.
 
