@@ -134,10 +134,12 @@ Six conditions are implemented: source only; clean graph; deleted relationships;
 rewired relationships; clean graph with checking; and rewired graph with checking.
 The clean graph is unperturbed under the extractor, not omniscient. Deletions
 remove supported relationships; rewiring preserves node contents while changing
-compatible endpoints. The CPU diagnostics target severities of 10%, 30%, and 50%
-under three corruption seeds. The model experiment uses one frozen corruption
-seed and a 30% target. Visible relationship budgets can alter achieved exposure,
-so both full-graph and visible intervention counts must be reported.
+compatible endpoints. Standalone CPU diagnostics apply both mechanisms to full
+snapshot graphs at 10%, 30%, and 50% targets under three seeds. Preparation also
+checks a byte-bounded pack. Model interventions use a separately tokenized,
+visible eligible-edge pack, one frozen seed and a 30% target. Report full-graph
+size separately and requested/achieved corruption against each relevant edge
+universe; CPU and model severities do not share a denominator.
 
 For model conditions, construct rewiring first and match deletion to its achieved
 edit count. Deletion samples supported edges independently; those edges need not
