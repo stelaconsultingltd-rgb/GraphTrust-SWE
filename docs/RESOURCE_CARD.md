@@ -89,6 +89,11 @@ publishable, and completed calls never determine cohort membership.
 
 ## Reproduction and license
 
+The public [source repository](https://github.com/stelaconsultingltd-rgb/GraphTrust-SWE)
+and [v0.1.0-alpha.1 software preview](https://github.com/stelaconsultingltd-rgb/GraphTrust-SWE/releases/tag/v0.1.0-alpha.1)
+provide original implementation code and synthetic examples. This preview does
+not contain an accepted scientific freeze or empirical Gemma findings.
+
 Use the README and REPRODUCIBILITY.md commands. The installed wheel includes an
 original synthetic fixture suite and development protocol; `python -m graphtrust
 demo` runs offline without repository or model downloads. Synthetic reports are

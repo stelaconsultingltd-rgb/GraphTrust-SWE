@@ -3,6 +3,9 @@
 A controlled robustness resource for repository graph evidence: compare missing
 relationships with false relationships while keeping the source pack identical.
 
+The [implementation preview](https://github.com/stelaconsultingltd-rgb/GraphTrust-SWE/releases/tag/v0.1.0-alpha.1)
+provides the Apache-2.0 software, offline fixtures, and reproduction tools.
+
 **Research status:** implementation and synthetic verification are available.
 Synthetic outputs are never evidence about Gemma. The primary model study is not
 complete and the protocol must pass a real development pilot before it is frozen.
