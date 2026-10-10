@@ -23,7 +23,26 @@ class ExperimentBundlerTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         self.protocol = bundler.read_json(ROOT / "configs/protocol.json")
-        self.wheel = ROOT / "dist/graphtrust_swe-0.1.0-py3-none-any.whl"
+        # Tooling fixture only: clean source checkouts have no prebuilt dist wheel.
+        # Preserve current source/protocol bytes without invoking a build backend.
+        self.wheel = self.root / "graphtrust_swe-0.1.0-py3-none-any.whl"
+        package = ROOT / "src/graphtrust"
+        entries = {"graphtrust/" + path.relative_to(package).as_posix(): path.read_bytes()
+            for path in sorted(package.rglob("*"))
+            if path.is_file() and path.suffix in {".py", ".json", ".md"} and "__pycache__" not in path.parts}
+        metadata = "graphtrust_swe-0.1.0.dist-info/"
+        entries[metadata + "METADATA"] = b"Metadata-Version: 2.1\nName: graphtrust-swe\nVersion: 0.1.0\nRequires-Python: >=3.11\n"
+        entries[metadata + "WHEEL"] = b"Wheel-Version: 1.0\nGenerator: synthetic-test-fixture\nRoot-Is-Purelib: true\nTag: py3-none-any\n"
+        records = []
+        for name, content in sorted(entries.items()):
+            value = base64.urlsafe_b64encode(hashlib.sha256(content).digest()).rstrip(b"=").decode("ascii")
+            records.append(f"{name},sha256={value},{len(content)}\n")
+        entries[metadata + "RECORD"] = ("".join(records) + metadata + "RECORD,,\n").encode("utf8")
+        with zipfile.ZipFile(self.wheel, "w", zipfile.ZIP_DEFLATED) as archive:
+            for name, content in sorted(entries.items()):
+                member = zipfile.ZipInfo(name, (1980, 1, 1, 0, 0, 0))
+                member.compress_type = zipfile.ZIP_DEFLATED
+                archive.writestr(member, content)
         self.code_hash = bundler.wheel_implementation(self.wheel)
         self.backend = {"name": "transformers", "model_path": "/kaggle/input/models/example/e2b/1",
             "checkpoint_sha256": "a" * 64, "tokenizer_sha256": "b" * 64, "enable_thinking": False}

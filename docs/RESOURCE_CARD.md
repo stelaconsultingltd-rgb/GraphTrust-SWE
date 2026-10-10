@@ -90,7 +90,7 @@ publishable, and completed calls never determine cohort membership.
 ## Reproduction and license
 
 The public [source repository](https://github.com/stelaconsultingltd-rgb/GraphTrust-SWE)
-and [v0.1.0-alpha.1 software preview](https://github.com/stelaconsultingltd-rgb/GraphTrust-SWE/releases/tag/v0.1.0-alpha.1)
+and [v0.1.0-alpha.2 software preview](https://github.com/stelaconsultingltd-rgb/GraphTrust-SWE/releases/tag/v0.1.0-alpha.2)
 provide original implementation code and synthetic examples. This preview does
 not contain an accepted scientific freeze or empirical Gemma findings.
 

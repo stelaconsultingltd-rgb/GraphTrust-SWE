@@ -3,7 +3,7 @@
 A controlled robustness resource for repository graph evidence: compare missing
 relationships with false relationships while keeping the source pack identical.
 
-The [implementation preview](https://github.com/stelaconsultingltd-rgb/GraphTrust-SWE/releases/tag/v0.1.0-alpha.1)
+The [implementation preview](https://github.com/stelaconsultingltd-rgb/GraphTrust-SWE/releases/tag/v0.1.0-alpha.2)
 provides the Apache-2.0 software, offline fixtures, and reproduction tools.
 
 **Research status:** implementation and synthetic verification are available.

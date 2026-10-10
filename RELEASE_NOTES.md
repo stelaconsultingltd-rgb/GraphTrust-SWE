@@ -1,4 +1,4 @@
-# Implementation preview: v0.1.0-alpha.1
+# Implementation preview: v0.1.0-alpha.2
 
 This preview provides the GraphTrust-SWE software resource: conservative Python
 relationship extraction, deterministic deletion/rewiring, fixed source contexts,
@@ -6,8 +6,12 @@ a source-consistency baseline, resumable inference logs, paired metrics, and
 reproduction tools. The wheel's package version remains 0.1.0; the Git
 tag identifies an implementation preview.
 
+This revision makes the test suite work from a clean source download by creating
+its own temporary wheel fixture. It removes a dependency on an unpublished local
+build artifact; the core package and inference behavior are unchanged.
+
 There are no empirical Gemma robustness findings in this release. Synthetic
-examples exercise the software and are labeled synthetic. A complete real
+examples exercise the software and are labeled synthetic. A passing real
 development pilot, protocol freeze, primary study, replication, paper results,
 and competition submission remain pending. The methods draft is a research
 template, not a completed competition paper.
