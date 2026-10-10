@@ -1,5 +1,16 @@
 # Implementation release checklist
 
+The historical artifact audit below describes the alpha.2 software preview,
+which is now [public](https://github.com/stelaconsultingltd-rgb/GraphTrust-SWE/releases/tag/v0.1.0-alpha.2).
+The current prospective package 0.3.0 separately passed author and independent
+212-test suites and an installed-wheel offline demo. Its reviewed implementation
+fingerprint is `cc558cf01c545cedbba04b568da2d451613353a2d742c913f8535c21b24be246`.
+Fresh final corpus preparation and a matching real pilot remain pending. These
+software checks do not establish a final scientific freeze or empirical release;
+see [execution status](EXECUTION_STATUS.md).
+
+## Historical software-preview audit
+
 Audit date: 10 October 2026. The proposed `v0.1.0-alpha.1` release is an
 implementation preview. It must not claim a completed scientific study, a frozen
 protocol, or Gemma findings. No public repository/tag has been created by this
