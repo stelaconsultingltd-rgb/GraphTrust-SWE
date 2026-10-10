@@ -33,6 +33,12 @@ source/target node IDs, call-site path, line, expression, and snapshot provenanc
 Unresolved dynamic bindings and parse failures are recorded. These relationships
 are conservative lexical evidence, not a complete runtime call graph.
 
+The prospective CPU study uses CPython 3.12.14. Exact graphs can depend on AST
+runtime behavior; Python 3.11+ demo support does not promise identical study
+graphs across versions. The cache key binds the extractor, repository and commit,
+but not the Python runtime. Use a fresh output directory with the recorded study
+runtime rather than relabeling caches from a different environment.
+
 Deletion removes supported edges. Rewiring swaps compatible endpoints and rejects
 unchanged, duplicate, self-loop, and replacement relationships supported anywhere
 in the full source-derived graph, including call sites outside packed metadata.

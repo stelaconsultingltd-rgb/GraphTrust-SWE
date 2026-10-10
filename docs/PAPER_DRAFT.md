@@ -103,8 +103,9 @@ source examples. Assertions about falsity must remain within that scope. Cases
 where dynamic semantics prevent a justified classification remain unresolved
 rather than becoming convenient negative examples.
 
-Each graph and intervention is identified by its repository commit, source hashes,
-algorithm version, seed, and achieved edit count. Requested severity may differ
+CPU extraction uses pinned CPython 3.12.14. Each graph and intervention is identified
+by its repository commit, source hashes, algorithm version, seed, and achieved
+edit count. Requested severity may differ
 from achieved severity when too few compatible swaps exist. The resource records
 both quantities instead of silently treating every case as equally perturbed.
 
@@ -273,6 +274,11 @@ combines iterative retrieval with generation for cross-file completion, while
 uses repository graph structure for software engineering agents. These precedents
 establish that repository context and relationships are useful research objects;
 GraphTrust-SWE does not introduce them.
+
+[LocAgent](https://aclanthology.org/2025.acl-long.426/) studies graph-guided
+localization with changing retrieved code. Its Acc@k requires all reference
+locations; our fixed-pack recall@5 and any-file hit@5 are different measures.
+We make no numerical superiority comparison.
 
 [Weng et al.](https://arxiv.org/abs/2605.14478) investigate temporal staleness of
 retrieved helper snippets in code completion. Our distinction is an intervention

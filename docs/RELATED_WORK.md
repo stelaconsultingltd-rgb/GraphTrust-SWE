@@ -8,6 +8,7 @@ their reported results are not results from GraphTrust-SWE.
 | [Jimenez et al., SWE-bench, ICLR 2024](https://arxiv.org/abs/2310.06770) and [SWE-bench Lite dataset](https://huggingface.co/datasets/princeton-nlp/SWE-bench_Lite) | Repository snapshots, issue statements, reference patches, and execution-based repair evaluation. Lite supplies a smaller corpus. | Localization against reference-edit files is a proxy task. It is not a SWE-bench repair solve rate. Public benchmark exposure permits training contamination; no claim of unseen issues is justified. |
 | [Zhang et al., RepoCoder, EMNLP 2023](https://aclanthology.org/2023.emnlp-main.151/) | Iterative retrieval and generation use cross-file context for repository-level code completion. | Our matched arms manipulate relationship metadata after fixing source snippets. We do not introduce repository retrieval or iterative completion. |
 | [Ouyang et al., RepoGraph, ICLR 2025](https://proceedings.iclr.cc/paper_files/paper/2025/file/4a4a3c197deac042461c677219efd36c-Paper-Conference.pdf) | A repository graph can support modern software engineering agents. | A fixed-source corruption diagnostic measures sensitivity to metadata reliability. It is not a superiority comparison with RepoGraph, and our conservative Python graph is not a full program graph. |
+| [Chen et al., LocAgent, ACL 2025](https://aclanthology.org/2025.acl-long.426/) | Graph-guided tools support agent localization; retrieval changes exposed code. Its Acc@k requires all reference locations. | Our fixed source pack isolates metadata interventions. Recall@5 and any-file Hit@5 are different measures, so numerical results are not comparable. |
 | [Weng et al., When Retrieval Hurts Code Completion, arXiv:2605.14478](https://arxiv.org/abs/2605.14478) | A controlled study varies temporal freshness of retrieved helper snippets. It reports code completion effects for stale source context. | Source snapshots and snippet bytes remain identical here. Missing and contradicted relationships are distinct metadata interventions, not stale source or a temporal-validity benchmark. |
 | [Mantiglia, codegraph-loc, pinned snapshot](https://github.com/danielmantiglia/codegraph-loc/tree/24fc2779a1c838b28f64252a959beddde8dc64a5) | A public competition resource includes graph audits, function localization, candidate reranking, and a graph-navigating Gemma agent. Its repository reports are author-provided evidence, not an independently reproduced comparison. | Controlled missing-versus-contradicted metadata with identical source remains the distinction; neither graph auditing nor agent localization is new. |
 | [Google, Gemma basic text inference](https://ai.google.dev/gemma/docs/capabilities/text/basic) | The official documentation describes Gemma 4 inference with Transformers and a T4 example. | Documentation supports feasibility, not measured throughput on our pilot or a promise that the entire quota budget is sufficient. Record actual checkpoint, software versions, chat template, quantization, and device map. |
@@ -65,6 +66,13 @@ Our resource should distinguish that control, not claim a new localization
 benchmark category.
 
 ## Positioning to retain in the submission
+
+**LocAgent.** Targeted review of the primary conference paper's sections 3.1,
+3.2/Table 2, 4.1 and 5.1 confirms graph-guided localization is established. Its
+tools retrieve different code as navigation proceeds, and strict Acc@k requires
+all relevant reference locations. Our fixed-source intervention and reference-edit
+recall/any-file hit measures answer a different question. Its PDF identity is
+recorded in LITERATURE_LOCK.json; its experiments were not reproduced here.
 
 Use: “GraphTrust-SWE provides a reproducible, fixed-source protocol for testing
 whether missing and contradicted repository relationships affect Gemma localization,

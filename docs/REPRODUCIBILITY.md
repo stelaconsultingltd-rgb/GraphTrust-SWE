@@ -38,6 +38,12 @@ exercise. It has no hidden state and does not download models or repositories.
 
 ## Acquire immutable corpus inputs and prepare CPU artifacts
 
+Use CPython 3.12.14 for the prospective study's CPU graphs; the broader Python
+3.11+ requirement above applies to the software demo. Record the actual CPU
+version and AST library identity with preparation artifacts. The graph cache key
+does not include the Python runtime, so keep outputs from different runtimes in
+separate fresh directories. Model runtime identities are recorded separately.
+
 ```text
 python -m pip install -e ".[corpus]"
 python -m graphtrust fetch --out data/swebench-lite --revision 6ec7bb89b9342f664a54a6e0a6ea6501d3437cc2
