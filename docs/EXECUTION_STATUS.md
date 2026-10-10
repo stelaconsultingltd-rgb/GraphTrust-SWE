@@ -46,8 +46,10 @@ metadata and outcome allowlists, redacts invalid ranked slots without filling
 them, and links exported rows to original canonical record hashes. It excludes
 raw prompts, responses, source packs and evaluator labels. Matching source,
 snapshot, tokenizer and model identities are checked before publication;
-complete scored joins regenerate aggregate reports and figures. Its combined
-test suite and independent review are in progress.
+complete scored joins regenerate aggregate reports and figures. The author and
+independent combined suites each passed all 212 tests (180.825 and 144.609 seconds,
+respectively), with unchanged Python and protocol bytes. A fresh installed wheel
+passed the six-condition offline synthetic demo and manifest checks.
 
 These changes alter the study implementation identity. The package 0.2.0 pilot
 cannot freeze package 0.3.0. All repository graphs and contexts will be regenerated
@@ -60,9 +62,10 @@ holdout model result.
 The earlier CPU preparation attempted all 300 test cases and recorded 299
 successful cases plus the diagnosed SymPy recursion error. Legacy continuation
 and partial diagnostics retain their original identities. They do not establish
-a completed final CPU resource. A separately reviewed one-shot pipeline will
-regenerate all 323 cases across 320 unique snapshots; it preserves source and
-evaluator bytes and imports no old graph caches.
+a completed final CPU resource. A separately reviewed one-shot pipeline started
+on 10 October to regenerate all 323 cases across 320 unique snapshots. Its startup
+audit passed; full source byte verification, preparation and diagnostics are
+pending. It preserves source and evaluator bytes and imports no old graph caches.
 
 A CPU-only Kaggle build produced the pinned CUDA Gemma 4 GGUF runtime wheel.
 Independent downloads verified its bytes, source pins and CUDA build settings.
