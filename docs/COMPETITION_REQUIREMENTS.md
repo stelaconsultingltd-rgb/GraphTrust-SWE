@@ -21,6 +21,8 @@ These are administrative evidence, not benchmark inputs.
   of our reproducibility deliverable. Links must be accessible without login
   or a paywall. Attaching private Kaggle resources to a public Writeup can make
   them public after the deadline; inspect attachments before final submission.
+  When providing code, include the public executable notebook in Project Links
+  and verify its access from a signed-out session.
 - Saving a Writeup does not submit it. Use its Submit action and verify the
   resulting submitted status. Unsubmitted drafts are ineligible.
 - Join the competition with the submitting account and verify its joined status

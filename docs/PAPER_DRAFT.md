@@ -115,13 +115,15 @@ A lexical retriever uses the issue statement and base source, then enriches its
 anchors with clean source-supported graph neighbors to assemble one candidate
 pack. The source-only arm is therefore a shared-pack control, not an independent
 lexical-retrieval system. Retrieval first seeks file diversity, targeting at least
-ten production files when the source and budget permit. Test,
-generated, and vendor paths are excluded by the documented policy. Snippets retain
+ten production files when the source and budget permit. A documented path-name
+policy excludes test and vendor paths and named build/cache directories; it does
+not classify all generated code. Snippets retain
 their source IDs and line bounds, and truncation is explicit. Truncated callers
 prioritize deterministic clean call-site lines. Metadata retains only supported
 relationships whose endpoints are selected and original call-site line is
 visible, before constructing any intervention. Structural qualification applies
-to this subset. This CPU-development revision preceded all model outcomes.
+to this subset. These rules were established during development before holdout
+evaluation.
 
 The pack is built once per issue. Every arm reuses its exact UTF-8 bytes, source
 IDs, and ordering. Prompt construction refuses to fit an oversized arm by trimming
@@ -182,8 +184,9 @@ timeouts on at least two issues in a condition, triggers the same reduced budget
 for all arms and a complete new versioned pilot. Switching the primary
 runtime to E2B GGUF is a protocol change, not a hidden substitution mid-holdout.
 
-The model returns structured JSON with ranked file paths, source IDs, graph edge
-IDs, and an abstention flag. It can cite source, graph evidence, both, or abstain.
+The model returns JSON with required ranked `files`, optional `citations` containing
+source IDs, graph edge IDs or candidate paths, and optional `abstain`. It can cite
+source, graph evidence, both, or abstain.
 It is never required to repeat graph relationships. Every attempted call is
 written to a durable JSONL log with timing, tokens, hashes, output, and terminal
 status. Resume skips existing logical run IDs, including recorded failures. A

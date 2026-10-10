@@ -2,7 +2,7 @@
 
 **Initial audit superseded; final revision rechecked in the addendum below.** After the initial checks, a development source-visibility audit triggered one bounded, pre-model source-packing revision. The initial identified wheel must not be used for the revised pilot. The addendum identifies the replacement wheel and fresh checks.
 
-**Latest runtime status:** the v8 private Kaggle pilot stopped at the tokenizer identity guard before localization. The protocol remains unfrozen. The final addenda document this preserved failure, the updated diagnostic notebook, and the independently verified v9 replacement bundle prepared from actual Kaggle tokenizer assets. Successful runtime guards and real pilot acceptance remain pending.
+**Historical review:** the v8 private Kaggle pilot stopped at the tokenizer identity guard before localization. The addenda retain that failure and subsequent software checks. The later v15 pilot passed development gates on package 0.2.0; package 0.3.0 still requires its own complete real pilot before final freeze. See [current execution status](EXECUTION_STATUS.md) for current software and experiment evidence.
 
 This review covers the identified local implementation and its portable Kaggle pilot harness. It does not establish model throughput, pilot acceptance, a frozen protocol, or an empirical benchmark result. The local demonstrations use `synthetic-mock` and are excluded from research evidence.
 
