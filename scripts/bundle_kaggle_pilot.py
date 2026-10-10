@@ -25,6 +25,10 @@ def digest(value) -> str:
 
 
 def validate_inputs(contexts: list[dict], manifest: dict, protocol: dict) -> None:
+    if (protocol.get("schema_version") != 2 or protocol.get("response_contract_version") != "files_citations_v2"
+            or manifest.get("schema_version") != 2 or manifest.get("response_contract_version") != "files_citations_v2"
+            or any(row.get("response_contract_version") != "files_citations_v2" for row in contexts)):
+        raise ValueError("Fresh response-contract v2 pilot inputs are required")
     if manifest.get("stage") != "pilot" or manifest.get("token_method") != "tokenizer":
         raise ValueError("Only exact-tokenizer pilot contexts can be bundled")
     if len(contexts) != 60 or manifest.get("cases") != 10 or manifest.get("contexts") != 60:
@@ -167,7 +171,7 @@ def finalize_interrupted(working, reason):
                 continue
             terminal = dict(started, status="interrupted", error=reason,
                             error_kind="supervisor_interruption", latency_seconds=None)
-            output.write(json.dumps(terminal, sort_keys=True, ensure_ascii=False, separators=(",", ":")) + "\n")
+            output.write(json.dumps(terminal, sort_keys=True, ensure_ascii=True, separators=(",", ":"), allow_nan=False) + "\n")
             output.flush()
             os.fsync(output.fileno())
             terminal_ids.add(started["run_id"])

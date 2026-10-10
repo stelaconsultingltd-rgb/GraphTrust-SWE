@@ -1,6 +1,6 @@
 # GraphTrust-SWE resource card
 
-Version: 0.1.0 development. This resource has implemented CPU and synthetic
+Version: 0.2.0 development, response protocol v2. This resource has implemented CPU and synthetic
 verification; empirical Gemma robustness results require the real pilot and
 frozen holdout. It is intended for research into trust in repository relationship
 metadata, not certification of agent safety or general coding ability.
@@ -79,6 +79,13 @@ and failures are separate outcomes. Sampling repeats are averaged per issue
 before paired contrasts. Exploratory intervals resample repositories and issues;
 repository-specific results and actual denominators are reported. Different
 runtime or model configurations form separate strata.
+
+The [v2 contract](RESPONSE_PROTOCOL_V2.md) separates whole-response parsing from
+semantic invalid predictions. Valid literal file ranks retain recall when a
+citation is invalid; invalid and duplicate slots are not replaced. Observed
+parsing/citation diagnostics survive a late return, while timeout localization
+is zero. Legacy v1 records retain their original scoring rule in separate strata.
+This prospective revision requires a fresh complete real pilot before freeze.
 
 The experiment concerns supplied metadata under a fixed source budget. It does
 not establish behavior during unrestricted repository navigation or successful

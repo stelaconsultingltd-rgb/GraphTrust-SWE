@@ -185,9 +185,17 @@ The primary metric is file recall@5: distinct reference-edit files among the fir
 five predicted slots divided by the number of reference-edit files. Hit@5 is
 reported separately. Reference edits are useful localization proxies, not uniquely
 correct explanations of an issue. Other valid fixes may edit different files.
-Invalid paths do not earn credit, and explicit abstentions, schema failures,
+Invalid or duplicate slots are not replaced. Under response protocol v2, semantic
+or citation errors do not erase otherwise valid literal file predictions.
+Whole-output JSON/type decoding failures are separate from invalid predictions.
+Invalid paths do not earn credit, and explicit abstentions, contract failures,
 timeouts, and errors remain in the localization denominator with zero credit.
 Missing or empty evaluator gold is disclosed and excluded rather than fabricated.
+
+The compact v2 response requires files and permits optional citations and
+abstention. We accept a complete bare JSON object or one complete JSON-tagged
+fence, with no prose or fragment extraction. A fresh complete development pilot
+is required for this revision; earlier outputs retain their original contract.
 
 The report includes cited known-false relationships per issue, graph and source
 citations, abstention, invalid predictions, parse failures, tokens, latency, and

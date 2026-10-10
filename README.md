@@ -75,12 +75,22 @@ as inputs. Never upload evaluator-only labels into the agent's inputs.
 `scripts/bundle_kaggle_pilot.py` packages a verified wheel and exact pilot contexts
 into a private T4 script, capped at 120 calls and a three-hour session.
 
-Model outputs must be JSON with `files` (up to five relative paths), `source_ids`,
-`edge_ids`, and `abstain`. Source or graph citations are optional. The runner
+Response protocol v2 requires `files` (up to five exact visible relative paths).
+Optional `citations` defaults to `[]` and accepts up to two exact visible SOURCE
+IDs, relationship IDs, or candidate file paths; optional `abstain` defaults to
+`false`. Accept one complete JSON object, bare or in one whole `json` fence.
+Parsing failures and semantic invalid predictions are separate outcomes; citation
+errors do not erase valid file recall. See [the versioned response contract](docs/RESPONSE_PROTOCOL_V2.md).
+The runner
 records every attempt, timeout, malformed output and interruption, and resumes
 only missing run keys. Changing model/runtime/generation configuration creates a
 different experiment. In-process timeouts are measured after generation, not a
 hard cancellation guarantee.
+
+V2 changes require fresh contexts and a complete fresh 120-call development
+pilot before freeze. Earlier v1 logs remain immutable and can be reported under
+their original scoring rule; they cannot satisfy the v2 pilot or be resumed into
+a v2 log.
 
 ## Scientific boundaries
 

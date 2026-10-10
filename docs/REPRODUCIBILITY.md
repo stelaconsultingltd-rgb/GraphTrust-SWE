@@ -167,7 +167,7 @@ For a private script run instead of an interactive notebook, bundle the same
 validated inputs without uploading an evaluator dataset:
 
 ```text
-python scripts/bundle_kaggle_pilot.py --wheel dist/graphtrust_swe-0.1.0-py3-none-any.whl --contexts runs/pilot/contexts.jsonl --manifest runs/pilot/manifest.json --protocol configs/protocol.json --out runs/kaggle-pilot/graphtrust_pilot.py
+python scripts/bundle_kaggle_pilot.py --wheel dist/graphtrust_swe-0.2.0-py3-none-any.whl --contexts runs/pilot/contexts.jsonl --manifest runs/pilot/manifest.json --protocol configs/protocol.json --out runs/kaggle-pilot/graphtrust_pilot.py
 ```
 
 The bundler generates and compiles the script locally; it does not launch a GPU
@@ -205,9 +205,16 @@ python -m graphtrust freeze --pilot runs/pilot --out runs/protocol-frozen.json
 Freeze requires complete real records and exact tokenizer source packs, plus the
 pilot acceptance gates. A mock run cannot satisfy it. If memory or timeouts affect
 at least two development issues in a condition, uniformly reduce budgets and rerun
-the versioned pilot. Require at least 95% parseable outputs and review graph
+the versioned pilot. Require at least 95% contract-parseable outputs completed
+within the elapsed budget, and review graph
 evidence use. An uninformative presentation is corrected on development cases;
 the model is still permitted to rely exclusively on source or abstain.
+
+The prospective [response protocol v2](RESPONSE_PROTOCOL_V2.md) uses record schema
+`2.0` and contract `files_citations_v2`. Rebuild contexts and record all 120 fresh
+attempts with the final implementation hash. Preserve old v1/v9/v10 artifacts;
+never relabel, reparse, combine, or reuse them as v2 pilot evidence. V1 reports
+retain their original scoring behavior in a separate configuration.
 
 Once frozen, generate the holdout under the accepted protocol. For a budget
 revision, first create a new versioned protocol JSON with the accepted values and

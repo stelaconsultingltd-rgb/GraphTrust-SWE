@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from .io import read_json, read_jsonl, write_json, write_jsonl
+from .prediction import RESPONSE_CONTRACT_VERSION
 
 
 def tokenizer_counter(model: str):
@@ -36,7 +37,7 @@ def _print(value) -> None:
 
 def main(argv=None) -> None:
     parser = argparse.ArgumentParser(prog="graphtrust", description="GraphTrust-SWE controlled graph-evidence benchmark")
-    parser.add_argument("--protocol", help="Protocol JSON; defaults to the bundled v1 development protocol")
+    parser.add_argument("--protocol", help="Protocol JSON; defaults to the bundled development response protocol v2")
     commands = parser.add_subparsers(dest="command", required=True)
     fetch = commands.add_parser("fetch", help="Acquire revision-pinned public SWE-bench Lite")
     fetch.add_argument("--out", default="data/swebench-lite")
@@ -102,7 +103,8 @@ def main(argv=None) -> None:
         if args.stage != "pilot":
             frozen = read_json(args.freeze)
             from .provenance import implementation_sha256
-            if frozen["status"] != "frozen" or frozen["protocol_sha256"] != digest(_protocol(args)):
+            if (frozen.get("schema_version") != 2 or frozen.get("response_contract_version") != RESPONSE_CONTRACT_VERSION
+                    or frozen["status"] != "frozen" or frozen["protocol_sha256"] != digest(_protocol(args))):
                 raise ValueError("Holdout preparation requires a matching scientifically frozen protocol")
             if frozen.get("implementation_sha256") != implementation_sha256():
                 raise ValueError("Implementation differs from the pilot freeze")
@@ -126,6 +128,11 @@ def main(argv=None) -> None:
         manifest = None
         if args.backend != "mock":
             manifest = read_json(Path(args.contexts).parent / "manifest.json")
+            if (protocol.get("schema_version") != 2 or manifest.get("schema_version") != 2
+                    or protocol.get("response_contract_version") != RESPONSE_CONTRACT_VERSION
+                    or manifest.get("response_contract_version") != RESPONSE_CONTRACT_VERSION
+                    or any(r.get("response_contract_version") != RESPONSE_CONTRACT_VERSION for r in rows)):
+                raise ValueError("Real inference requires current response-contract v2 artifacts")
             if (manifest["contexts_sha256"] != digest(rows) or manifest["protocol_sha256"] != digest(protocol)
                     or manifest.get("implementation_sha256") != implementation_sha256()
                     or manifest.get("token_method") != "tokenizer"):
@@ -145,7 +152,8 @@ def main(argv=None) -> None:
                 raise ValueError("Runtime tokenizer counts differ from stored exact counts")
             if manifest["stage"] == "holdout":
                 frozen = read_json(args.freeze)
-                if (frozen.get("status") != "frozen" or frozen["protocol_sha256"] != digest(protocol)
+                if (frozen.get("schema_version") != 2 or frozen.get("response_contract_version") != RESPONSE_CONTRACT_VERSION
+                        or frozen.get("status") != "frozen" or frozen["protocol_sha256"] != digest(protocol)
                         or frozen.get("implementation_sha256") != implementation_sha256()
                         or frozen["backend_sha256"] != digest(backend.identity)):
                     raise ValueError("Primary holdout backend differs from the accepted pilot freeze")
@@ -203,7 +211,8 @@ def run_demo(fixtures: str | Path, output: str | Path, protocol: dict) -> None:
     write_jsonl(output / "contexts.jsonl", rows)
     save_graph(output / "graph.json.gz", graph)
     write_json(output / "qualification.json", qualification)
-    write_json(output / "manifest.json", {"stage": "synthetic_demo", "status": "synthetic_only",
+    write_json(output / "manifest.json", {"schema_version": 2, "response_contract_version": RESPONSE_CONTRACT_VERSION,
+                "stage": "synthetic_demo", "status": "synthetic_only",
                 "cases": 1, "contexts": len(rows), "contexts_sha256": digest(rows),
                 "token_method": "byte_upper_bound", "protocol_sha256": digest(protocol)})
     run_contexts(rows, output / "records.jsonl", MockBackend(), [17, 42], "synthetic-mock")

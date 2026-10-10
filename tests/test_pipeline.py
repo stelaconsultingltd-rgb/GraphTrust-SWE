@@ -3,6 +3,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 import hashlib
+import json
 from pathlib import Path
 import tempfile
 import threading
@@ -13,6 +14,7 @@ from graphtrust.graph import build_graph
 from graphtrust.io import digest, read_json, read_jsonl, write_json, write_jsonl
 from graphtrust.pipeline import _packed_source_graph, create_contexts, freeze_protocol, load_graph, materialize_case, prepare_case, save_graph
 from graphtrust.provenance import extractor_sha256, implementation_sha256
+from graphtrust.prediction import RECORD_SCHEMA_VERSION, RESPONSE_CONTRACT_VERSION, validate_prediction
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -37,7 +39,9 @@ class FreezeTests(unittest.TestCase):
                 self.contexts.append({"case_id": f"dev-{issue}", "repo": repo, "condition": condition,
                                       "prompt": prompt, "context_sha256": text_hash(prompt),
                                       "source_sha256": text_hash(source), "input_tokens": len(prompt),
-                                      "token_method": "tokenizer", "visible_edge_ids": ["edge-1"] if condition != "source_only" else []})
+                                      "token_method": "tokenizer", "response_contract_version": RESPONSE_CONTRACT_VERSION,
+                                      "visible_files": ["sample.py"], "visible_source_ids": ["sample.py::f"],
+                                      "visible_edge_ids": ["edge-1"] if condition != "source_only" else []})
         self.backend = {"name": "transformers", "resolved_revision": "a" * 40,
                         "chat_template_sha256": "b" * 64, "enable_thinking": False,
                         "tokenizer_sha256": "c" * 64}
@@ -47,21 +51,28 @@ class FreezeTests(unittest.TestCase):
         self.records = [{"case_id": row["case_id"], "repo": row["repo"], "condition": row["condition"], "seed": seed,
                          "model_name": "pinned-e2b", "status": "ok", "synthetic": False,
                          "source_sha256": row["source_sha256"], "context_sha256": row["context_sha256"],
-                         "input_tokens": row["input_tokens"], "output_tokens": 20,
+                         "input_tokens": row["input_tokens"], "output_tokens": 20, "latency_seconds": 1,
                          "backend": deepcopy(self.backend), "generation": deepcopy(self.generation),
-                         "response": {"files": ["sample.py"], "source_ids": [],
-                                      "edge_ids": ["edge-1"] if row["condition"] == "clean" else [], "abstain": False}}
+                         "response": {"files": ["sample.py"],
+                                      "citations": ["edge-1"] if row["condition"] == "clean" else [], "abstain": False}}
                         for row in self.contexts for seed in self.protocol["sampling_seeds_primary"]]
+        for record in self.records:
+            arm = next(c for c in self.contexts if c["case_id"] == record["case_id"] and c["condition"] == record["condition"])
+            record.update(schema_version=RECORD_SCHEMA_VERSION, response_contract_version=RESPONSE_CONTRACT_VERSION,
+                          contract_parseable=True, prediction=deepcopy(record["response"]),
+                          raw_output=json.dumps(record["response"]))
+            record.update(validate_prediction(record["response"], arm))
 
     def write_pilot(self):
         case_ids = sorted({row["case_id"] for row in self.contexts})
-        write_json(self.root / "manifest.json", {"stage": "pilot", "token_method": "tokenizer",
+        write_json(self.root / "manifest.json", {"schema_version": 2, "response_contract_version": RESPONSE_CONTRACT_VERSION,
+                   "stage": "pilot", "token_method": "tokenizer",
                    "protocol_sha256": digest(self.protocol), "contexts_sha256": digest(self.contexts),
                    "cases": self.protocol["pilot_issues"], "case_ids": case_ids,
                    "selection_sha256": digest(case_ids), "implementation_sha256": implementation_sha256(),
                    "contexts": len(self.contexts), "tokenizer_identity": "c" * 64})
         write_jsonl(self.root / "contexts.jsonl", self.contexts)
-        write_jsonl(self.root / "records.jsonl", self.records)
+        (self.root / "records.jsonl").write_text("".join(json.dumps(r, ensure_ascii=True) + "\n" for r in self.records), encoding="utf-8")
 
     def freeze(self):
         self.write_pilot()
@@ -152,6 +163,88 @@ class FreezeTests(unittest.TestCase):
         self.write_pilot()
         with patch("graphtrust.pipeline.implementation_sha256", return_value="different"), self.assertRaisesRegex(ValueError, "Implementation changed"):
             freeze_protocol(self.protocol, self.root, self.root / "frozen.json")
+
+    def update_prediction(self, record, data):
+        arm = next(c for c in self.contexts if c["case_id"] == record["case_id"] and c["condition"] == record["condition"])
+        record.update(response=deepcopy(data), prediction=deepcopy(data), raw_output=json.dumps(data))
+        record.update(validate_prediction(data, arm))
+        record["status"] = "invalid_prediction" if record["invalid_prediction"] else "ok"
+
+    def test_semantic_invalid_outputs_count_as_parseable_and_are_disclosed(self):
+        for record in self.records:
+            self.update_prediction(record, {**record["response"], "extra": "fixture"})
+        result = self.freeze()
+        self.assertEqual(result["within_budget_contract_parse_rate"], 1)
+        self.assertEqual(result["invalid_prediction_rate"], 1)
+
+    def test_unknown_citations_never_satisfy_graph_usage_gate(self):
+        for record in self.records:
+            if record["condition"] == "clean":
+                self.update_prediction(record, {**record["response"], "citations": ["invented"]})
+        with self.assertRaisesRegex(ValueError, "Graph evidence rarely"):
+            self.freeze()
+
+    def test_legacy_records_missing_raw_and_incorrect_flags_cannot_freeze(self):
+        for mutation in ({"schema_version": "1.0"}, {"response_contract_version": "old"},
+                         {"contract_parseable": False}, {"invalid_prediction": True}):
+            with self.subTest(mutation=mutation):
+                original = deepcopy(self.records[0])
+                self.records[0].update(mutation)
+                with self.assertRaises(ValueError):
+                    self.freeze()
+                self.records[0] = original
+        del self.records[0]["raw_output"]
+        with self.assertRaisesRegex(ValueError, "raw output"):
+            self.freeze()
+
+    def test_at_least_114_of_120_attempts_must_parse_within_budget(self):
+        # Seven distinct issue/arm failures keep timeout policy out of this check.
+        original = deepcopy(self.records)
+        for i in range(6):
+            self.records[i].update(status="parse_error", raw_output="truncated {", response=None,
+                                   prediction=None, contract_parseable=False, invalid_prediction=False)
+        result = self.freeze()
+        self.assertEqual(result["parse_rate"], .95)
+        (self.root / "frozen.json").unlink()
+        self.records[6].update(status="parse_error", raw_output="truncated {", response=None,
+                               prediction=None, contract_parseable=False, invalid_prediction=False)
+        with self.assertRaisesRegex(ValueError, "below pilot threshold"):
+            self.freeze()
+        self.records = original
+
+    def test_late_valid_and_invalid_outputs_are_observed_but_not_gate_success(self):
+        record = self.records[0]
+        self.update_prediction(record, {"files": ["sample.py"], "citations": ["invented"], "abstain": False})
+        record.update(completed_status=record["status"], status="timeout", latency_seconds=91)
+        result = self.freeze()
+        self.assertEqual(result["within_budget_contract_parse_rate"], 119 / 120)
+        self.assertEqual(result["observed_contract_parse_rate"], 1)
+        self.assertEqual(result["invalid_prediction_rate"], 1 / 120)
+
+    def test_late_out_of_memory_cannot_hide_behind_timeout_status(self):
+        self.records[0].update(status="timeout", completed_status="error", raw_output=None, response=None,
+                               prediction=None, contract_parseable=False, invalid_prediction=False,
+                               error_kind="out_of_memory", error="fixture", latency_seconds=91)
+        with self.assertRaisesRegex(ValueError, "memory fitting"):
+            self.freeze()
+
+    def test_rejected_literal_surrogate_is_durable_and_does_not_crash_freeze_digest(self):
+        self.records[0].update(status="parse_error", raw_output='{"files":["' + chr(0xd800) + '.py"]}',
+                               response=None, prediction=None, contract_parseable=False, invalid_prediction=False)
+        result = self.freeze()
+        self.assertEqual(result["parse_rate"], 119 / 120)
+        self.assertEqual(result["pilot_records_digest_rule"], "sorted_compact_ascii_json_v2")
+        self.assertEqual(result["pilot_records_file_sha256"], hashlib.sha256((self.root / "records.jsonl").read_bytes()).hexdigest())
+
+    def test_timing_metadata_cannot_promote_late_returns(self):
+        for mutation in ({"latency_seconds": 91}, {"latency_seconds": -1}, {"latency_seconds": None},
+                         {"latency_seconds": float("inf")}, {"latency_seconds": 1, "status": "timeout", "completed_status": "ok"}):
+            with self.subTest(mutation=mutation):
+                original = deepcopy(self.records[0])
+                self.records[0].update(mutation)
+                with self.assertRaisesRegex(ValueError, "latency|budget|timeout"):
+                    self.freeze()
+                self.records[0] = original
 
 
 class ReplicationTests(unittest.TestCase):

@@ -29,6 +29,8 @@ BUNDLE_METADATA = None
 CONDITIONS = ["source_only", "clean", "deleted", "rewired", "clean_checked", "rewired_checked"]
 GGUF_COMMIT = "1652066e0af45f2313b339670ef9555e8a54e545"
 LLAMA_COMMIT = "0c1e57098bba43ac29e6e3b677cdceebdd22334f"
+RESPONSE_CONTRACT_VERSION = "files_citations_v2"
+RECORD_SCHEMA_VERSION = "2.0"
 
 
 def digest(value):
@@ -89,12 +91,13 @@ def schedule(contexts, seeds, model_name, backend, protocol):
         for seed in seeds:
             key = {"context_sha256": row["context_sha256"], "case_id": row["case_id"],
                 "condition": row["condition"], "model_name": model_name,
-                "backend": backend, "seed": seed, "generation": generation(protocol)}
+                "backend": backend, "seed": seed, "generation": generation(protocol),
+                "response_contract_version": RESPONSE_CONTRACT_VERSION}
             run_id = digest(key)
             if run_id in result:
                 raise ValueError("Duplicate scheduled arm/seed")
             result[run_id] = {**key, "repo": row["repo"], "source_sha256": row["source_sha256"],
-                "input_tokens": row["input_tokens"]}
+                "input_tokens": row["input_tokens"], "schema_version": RECORD_SCHEMA_VERSION}
     return result
 
 
@@ -115,7 +118,7 @@ def validate_history(records, starts, expected):
                     raise ValueError(f"Retained {name} differs from the accepted schedule")
             if is_start and row.get("status") != "started":
                 raise ValueError("Attempt journal must contain only starts")
-            if not is_start and row.get("status") not in {"ok", "parse_error", "error", "timeout", "interrupted"}:
+            if not is_start and row.get("status") not in {"ok", "invalid_prediction", "parse_error", "error", "timeout", "interrupted"}:
                 raise ValueError("Unknown terminal status")
             seen[run_id] = row
         indexed.append(seen)
@@ -136,7 +139,7 @@ def finalize_interrupted(records_path, expected):
                 row = {**start, "status": "interrupted", "error_kind": "process_interruption",
                     "error": "Worker ended without terminal record; automatic retry is disabled",
                     "latency_seconds": None}
-                handle.write(json.dumps(row, sort_keys=True, ensure_ascii=False, separators=(",", ":")) + "\n")
+                handle.write(json.dumps(row, sort_keys=True, ensure_ascii=True, separators=(",", ":"), allow_nan=False) + "\n")
                 handle.flush()
                 os.fsync(handle.fileno())
                 terminal[run_id] = row
@@ -162,6 +165,11 @@ def declared_primary_counts(manifest, protocol):
 
 
 def validate_inputs(contexts, manifest, protocol, frozen, backend, primary_manifest=None, runtime_lock=None):
+    if (protocol.get("schema_version") != 2 or protocol.get("response_contract_version") != RESPONSE_CONTRACT_VERSION
+            or manifest.get("schema_version") != 2 or manifest.get("response_contract_version") != RESPONSE_CONTRACT_VERSION
+            or frozen.get("schema_version") != 2 or frozen.get("response_contract_version") != RESPONSE_CONTRACT_VERSION
+            or any(row.get("response_contract_version") != RESPONSE_CONTRACT_VERSION for row in contexts)):
+        raise ValueError("Fresh response-contract v2 inputs and accepted pilot freeze are required")
     stage = manifest.get("stage")
     if stage not in {"holdout", "replication"} or manifest.get("token_method") != "tokenizer":
         raise ValueError("Only exact-tokenizer holdout or replication contexts are supported")

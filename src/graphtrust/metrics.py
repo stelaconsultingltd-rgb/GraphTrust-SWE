@@ -16,10 +16,15 @@ import random
 import statistics
 from typing import Any
 
+from .prediction import (RECORD_SCHEMA_VERSION, RESPONSE_CONTRACT_VERSION,
+                         exact_file_path, record_digest, validate_record_prediction)
+
 METRICS = (
     "file_recall_at5", "hit_at5", "cited_false_edges", "abstain",
     "invalid_files", "invalid_source_ids", "invalid_edge_ids", "parse_error", "invalid_output", "timeout", "error",
     "graph_citations", "source_citations",
+    "contract_parseable", "within_budget_contract_parseable", "invalid_prediction", "invalid_citations", "file_citations",
+    "duplicate_files", "duplicate_citations", "extra_fields", "too_many_files", "too_many_citations",
     "latency_seconds", "input_tokens", "output_tokens", "coverage_ceiling",
 )
 CONDITIONS = (
@@ -58,6 +63,8 @@ def evaluate_runs(
     slots are not replaced. Missing/empty gold has a null score, never a fabricated
     zero. Matching context metadata is required; corruption labels stay evaluator
     only. Explicit abstention earns zero localization credit even with file names.
+    V2 semantic/citation errors do not erase valid ranked file predictions. V1
+    records retain their original scoring rule and are a separate configuration.
     """
     contexts: dict[tuple[str, str], dict] = {}
     for context in context_metadata:
@@ -85,28 +92,52 @@ def evaluate_runs(
         reference = {_path(item) for item in gold.get(case_id, [])} - {None}
         status = record.get("status", "error")
         response = record.get("response", record.get("prediction"))
-        malformed = status in {"ok", "invalid_output", "parse_error"} and (
-            not isinstance(response, dict)
-            or not _strings(response.get("files"))
-            or not _strings(response.get("edge_ids", []))
-            or not _strings(response.get("source_ids", []))
-            or not isinstance(response.get("abstain", False), bool)
-        )
-        parsed = status in {"ok", "invalid_output", "parse_error"} and not malformed
+        if record.get("schema_version") not in {None, "1.0", RECORD_SCHEMA_VERSION}:
+            raise ValueError("Unknown record schema version; no implicit legacy decoding")
+        current_contract = record.get("schema_version") == RECORD_SCHEMA_VERSION
+        if not current_contract and record.get("response_contract_version") is not None:
+            raise ValueError("Legacy record cannot carry a prospective response-contract version")
+        validation = {}
+        if current_contract:
+            response, validation = validate_record_prediction(record, context)
+            visible = {item for item in context.get("visible_files", []) if isinstance(item, str) and exact_file_path(item)}
+            parsed = record["contract_parseable"]
+            malformed = False
+            paths = list(response["files"]) if parsed else []
+            top5 = {item for item in paths[:5] if exact_file_path(item) and item in visible}
+            edge_ids = set(validation.get("valid_graph_citations", []))
+            source_ids = set(validation.get("valid_source_id_citations", []))
+            file_citations = set(validation.get("valid_file_citations", []))
+        else:
+            # Explicit legacy reporting boundary: preserve v1 zero-credit failure
+            # semantics. Legacy responses are never decoded as prospective v2.
+            malformed = status in {"ok", "invalid_output", "parse_error"} and (
+                not isinstance(response, dict) or not _strings(response.get("files"))
+                or not _strings(response.get("edge_ids", []))
+                or not _strings(response.get("source_ids", []))
+                or not isinstance(response.get("abstain", False), bool))
+            parsed = status in {"ok", "invalid_output", "parse_error"} and not malformed
+            paths = [_path(item) for item in response.get("files", [])] if parsed else []
+            top5 = {item for item in paths[:5] if item in visible}
+            edge_ids = set(response.get("edge_ids", [])) if parsed else set()
+            source_ids = set(response.get("source_ids", [])) if parsed else set()
+            file_citations = set()
         response = response if parsed else {}
         raw_files = response.get("files", [])
-        paths = [_path(item) for item in raw_files]
-        top5 = {item for item in paths[:5] if item in visible}
         abstain = bool(response.get("abstain", False))
-        matches = len(top5 & reference) if status == "ok" and not abstain else 0
-        edge_ids = set(response.get("edge_ids", []))
-        source_ids = set(response.get("source_ids", []))
+        within_budget = status in {"ok", "invalid_prediction"} if current_contract else status == "ok"
+        matches = len(top5 & reference) if parsed and not abstain and within_budget else 0
         configuration = {key: record[key] for key in ("backend", "generation") if key in record}
+        if current_contract:
+            configuration["response_contract_version"] = RESPONSE_CONTRACT_VERSION
+        elif configuration:
+            configuration["response_contract_version"] = "legacy_v1"
+        flags = validation.get("prediction_flags", {})
         scored.append({
             "record_index": index,
             "attempt_id": record.get("attempt_id", ""),
             "run_id": record.get("run_id", ""),
-            "record_sha256": hashlib.sha256(json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode()).hexdigest(),
+            "record_sha256": record_digest(record) if current_contract else hashlib.sha256(json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode()).hexdigest(),
             "case_id": case_id,
             "repo": record.get("repo", context.get("repo", "unspecified")),
             "condition": condition,
@@ -116,6 +147,7 @@ def evaluate_runs(
             "context_sha256": record.get("context_sha256", context.get("context_sha256", "")),
             "source_sha256": record.get("source_sha256", context.get("source_sha256", "")),
             "synthetic": bool(record.get("synthetic", False)),
+            "response_contract_version": RESPONSE_CONTRACT_VERSION if current_contract else "legacy_v1",
             "status": "parse_error" if malformed else status,
             "gold_present": bool(reference),
             "gold_file_count": len(reference),
@@ -125,16 +157,23 @@ def evaluate_runs(
             "hit_at5": float(matches > 0) if reference else None,
             "cited_false_edges": len(edge_ids & false_edges),
             "graph_citations": len(edge_ids & visible_edges),
-            "source_citations": len(source_ids & visible_sources) if "visible_source_ids" in context else len(source_ids),
+            "source_citations": len(source_ids & visible_sources) + len(file_citations) if "visible_source_ids" in context else len(source_ids) + len(file_citations),
+            "file_citations": len(file_citations),
+            "contract_parseable": float(parsed) if current_contract else None,
+            "within_budget_contract_parseable": float(parsed and within_budget) if current_contract else None,
+            "invalid_prediction": float(bool(validation.get("invalid_prediction"))) if current_contract else None,
+            "invalid_citations": len(validation.get("invalid_citations", [])) if current_contract else None,
+            **{key: float(bool(flags.get(key))) if current_contract else None for key in
+               ("duplicate_files", "duplicate_citations", "extra_fields", "too_many_files", "too_many_citations")},
             "abstain": float(abstain),
-            "invalid_files": sum(item not in visible for item in paths),
+            "invalid_files": len(validation.get("invalid_files", [])) if current_contract else sum(item not in visible for item in paths),
             "invalid_edge_ids": len(edge_ids - visible_edges),
             "invalid_source_ids": len(source_ids - visible_sources) if "visible_source_ids" in context else 0,
             "empty_prediction": float(parsed and not raw_files),
             "parse_error": float(status == "parse_error" or malformed),
             "invalid_output": float(status == "invalid_output"),
             "timeout": float(status == "timeout"),
-            "error": float(status not in {"ok", "parse_error", "invalid_output", "timeout"}),
+            "error": float(status not in {"ok", "invalid_prediction", "parse_error", "invalid_output", "timeout"}),
             "latency_seconds": _number(record.get("latency_seconds")),
             "input_tokens": _number(record.get("input_tokens")),
             "output_tokens": _number(record.get("output_tokens")),
@@ -204,7 +243,8 @@ def _condition_summary(rows: list[dict], samples: int, seed: int, label: str) ->
         "issues": len({(row["repo"], row["case_id"]) for row in rows}),
         "missing_gold_runs": sum(not row["gold_present"] for row in rows),
         "localization_runs": sum(bool(row["gold_present"]) for row in rows),
-        "failed_runs": sum(row["status"] != "ok" for row in rows),
+        "failed_runs": sum(row["status"] not in {"ok", "invalid_prediction"} for row in rows),
+        "invalid_prediction_runs": sum(bool(row.get("invalid_prediction")) for row in rows),
         "metrics": {metric: _interval(_issue_values(rows, metric), samples,
                                       _derived_seed(seed, label, metric)) for metric in METRICS},
     }
@@ -231,7 +271,8 @@ def summarize(scored: list[dict], bootstrap_samples: int = 2000, seed: int = 202
     for row in scored:
         latest[(model_key(row), row["repo"], row["case_id"], row["condition"], row["seed"])] = row
     result = {
-        "schema_version": 1,
+        "schema_version": 2,
+        "response_contract_versions": sorted({row.get("response_contract_version", "legacy_v1") for row in scored}),
         "attempts": len(scored),
         "outcome_runs": len(latest),
         "superseded_attempts": len(scored) - len(latest),
@@ -241,7 +282,8 @@ def summarize(scored: list[dict], bootstrap_samples: int = 2000, seed: int = 202
         "bootstrap_seed": seed,
         "estimand": "Mean across issues after averaging sampling seeds within each issue.",
         "interval_method": "Percentile hierarchical repository/issue bootstrap; 95% exploratory intervals.",
-        "failure_policy": "Last attempt per logical run; terminal failures score zero localization. All attempts remain in CSV.",
+        "failure_policy": "Last attempt per logical run; runtime/contract failures score zero localization. V2 semantic/citation errors retain valid first-five file slots; invalid/duplicate slots are not replaced. V1 scoring is retained in separate configurations. All attempts remain in CSV.",
+        "diagnostic_policy": "V2 contract/semantic/citation diagnostics retain late returned outputs. Within-budget contract parseability excludes timeouts; localization on runtime failures is zero. Indicators/counts use every logical run, including failures, then average seeds within issue.",
         "models": {},
     }
     for model in sorted({model_key(row) for row in scored}):
@@ -370,20 +412,20 @@ def write_report(scored: list[dict], outdir: str | Path) -> dict:
     lines = ["# GraphTrust-SWE evaluation report", "",
              "**SYNTHETIC DEMO — NOT RESEARCH EVIDENCE.**" if summary["synthetic"] else "Results describe the supplied evaluation records only.", "",
              f"Attempts: {summary['attempts']}; outcome runs: {summary['outcome_runs']}; superseded attempts: {summary['superseded_attempts']}.", "",
-             summary["estimand"], summary["interval_method"], summary["failure_policy"], "",
+             summary["estimand"], summary["interval_method"], summary["failure_policy"], summary["diagnostic_policy"], "",
              "Reference edits are localization proxies, not definitive root-cause labels. Missing gold is excluded from localization denominators and disclosed below.", ""]
     if summary["synthetic_attempts"] and not summary["synthetic"]:
         lines += [f"**Mixed evidence: {summary['synthetic_attempts']} attempts are synthetic. Synthetic model strata must never appear as empirical paper findings.**", ""]
     if not scored:
         lines += ["No evaluation records: there are no empirical results.", ""]
     for model, data in summary["models"].items():
-        lines += [f"## Model: {model}", "", "| Condition | Runs | Issues | Missing gold runs | Failed runs | File recall@5 | Hit@5 | False citations/issue | Coverage ceiling |", "|---|---:|---:|---:|---:|---:|---:|---:|---:|"]
+        lines += [f"## Model: {model}", "", "| Condition | Runs | Issues | Missing gold runs | Failed runs | Contract parseable | Within-budget parseable | Invalid prediction | File recall@5 | Hit@5 | False citations/issue | Coverage ceiling |", "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
         if data["synthetic"]:
             lines.insert(len(lines) - 2, "**This model stratum contains synthetic demonstrations; it is not research evidence.**\n")
         for condition, arm in data["conditions"].items():
             metrics = arm["metrics"]
             lines.append(f"| {condition} | {arm['runs']} | {arm['issues']} | {arm['missing_gold_runs']} | {arm['failed_runs']} | "
-                         + " | ".join(_format(metrics[name]["mean"]) for name in ("file_recall_at5", "hit_at5", "cited_false_edges", "coverage_ceiling")) + " |")
+                         + " | ".join(_format(metrics[name]["mean"]) for name in ("contract_parseable", "within_budget_contract_parseable", "invalid_prediction", "file_recall_at5", "hit_at5", "cited_false_edges", "coverage_ceiling")) + " |")
         lines += ["", "Paired differences are right minus left; seed sets must match within each issue. Full intervals, denominators, repository strata, and timing/token metrics are in summary.json.", "",
                   "| Left | Right | Matched issues | Scored recall issues | Unpaired issues | Recall difference | 95% interval |", "|---|---|---:|---:|---:|---:|---|"]
         for comparison in data["paired_comparisons"]:

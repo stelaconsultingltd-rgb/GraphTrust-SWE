@@ -12,6 +12,7 @@ from unittest.mock import Mock, patch
 from graphtrust.cli import main
 from graphtrust.io import digest, read_json, write_json, write_jsonl
 from graphtrust.provenance import implementation_sha256
+from graphtrust.prediction import RESPONSE_CONTRACT_VERSION
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -37,7 +38,8 @@ class InferencePreflightTests(unittest.TestCase):
         for case in range(10):
             for condition in self.protocol["conditions"]:
                 prompt = f"ISSUE\nfixture {case}\nEND ISSUE\nSOURCE PACK\n{source}END SOURCE PACK\nRELATIONSHIPS\n{condition}\nEND RELATIONSHIPS\n"
-                self.rows.append({"case_id": f"fixture-{case}", "repo": "r/r", "condition": condition,
+                self.rows.append({"response_contract_version": RESPONSE_CONTRACT_VERSION,
+                                  "case_id": f"fixture-{case}", "repo": "r/r", "condition": condition,
                                   "prompt": prompt, "context_sha256": text_hash(prompt),
                                   "source_sha256": text_hash(source), "input_tokens": len(prompt),
                                   "token_method": "tokenizer", "visible_files": ["fixture.py"],
@@ -48,12 +50,14 @@ class InferencePreflightTests(unittest.TestCase):
         self.backend.count_tokens.side_effect = lambda prompt: len(prompt)
         self.backend.generate.side_effect = AssertionError("Offline CLI tests never generate model output")
         case_ids = [f"fixture-{case}" for case in range(10)]
-        self.manifest = {"stage": "pilot", "contexts_sha256": digest(self.rows),
+        self.manifest = {"schema_version": 2, "response_contract_version": RESPONSE_CONTRACT_VERSION,
+                         "stage": "pilot", "contexts_sha256": digest(self.rows),
                          "protocol_sha256": digest(self.protocol), "implementation_sha256": implementation_sha256(),
                          "token_method": "tokenizer", "tokenizer_identity": "b" * 64,
                          "sampling_seeds": [17, 42], "case_ids": case_ids,
                          "selection_sha256": digest(case_ids), "cases": 10, "contexts": 60}
-        self.frozen = {"status": "frozen", "protocol_sha256": digest(self.protocol),
+        self.frozen = {"schema_version": 2, "response_contract_version": RESPONSE_CONTRACT_VERSION,
+                       "status": "frozen", "protocol_sha256": digest(self.protocol),
                        "implementation_sha256": implementation_sha256(), "backend_sha256": digest(self.backend.identity)}
         self.persist()
 
@@ -92,6 +96,12 @@ class InferencePreflightTests(unittest.TestCase):
         self.rows[0]["prompt"] += "changed"
         write_jsonl(self.contexts_path, self.rows)
         with self.assertRaisesRegex(ValueError, "checksum-verified"):
+            self.invoke()
+
+    def test_legacy_manifest_fails_before_backend_loading(self):
+        self.manifest["schema_version"] = 1
+        self.persist()
+        with self.assertRaisesRegex(ValueError, "response-contract v2"):
             self.invoke()
 
     def test_foreign_protocol_and_implementation_are_rejected(self):

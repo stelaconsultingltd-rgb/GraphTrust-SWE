@@ -10,10 +10,12 @@ import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
-from .corpus import prepare_snapshot, select_cases
+from .corpus import _writer_lock, prepare_snapshot, select_cases
 from .context import MODEL_EDGE_RULE, SOURCE_PACK_RULE
 from .io import canonical, digest, read_json, read_jsonl, write_json, write_jsonl
 from .provenance import extractor_sha256, implementation_sha256
+from .prediction import (RECORD_DIGEST_RULE, RECORD_SCHEMA_VERSION, RESPONSE_CONTRACT_VERSION,
+                         record_digest, validate_record_prediction)
 
 _LOADED_IMPLEMENTATION = implementation_sha256()
 
@@ -96,14 +98,28 @@ def prepare_case(case: dict, data: str, output: str, protocol: dict) -> dict:
         snapshot = prepare_snapshot(case, Path(data) / "cache")
         graph_key = digest({"repo": case["repo"], "commit": case["commit"], "extractor_sha256": extractor_sha256()})
         graph_path = out / "graphs" / (graph_key + ".json.gz")
-        graph = load_graph(graph_path) if graph_path.exists() else build_graph(snapshot, commit=case["commit"])
+        loaded_from_cache = graph_path.exists()
+        graph = load_graph(graph_path) if loaded_from_cache else build_graph(snapshot, commit=case["commit"])
         if graph["snapshot"]["commit"] != case["commit"]:
             raise ValueError("Cached graph commit does not match the requested case")
-        if graph_path.exists() and graph.get("extractor_sha256") != extractor_sha256():
+        if loaded_from_cache and graph.get("extractor_sha256") != extractor_sha256():
             raise ValueError("Cached graph has no matching extractor fingerprint")
-        graph["extractor_sha256"] = extractor_sha256()
-        if not graph_path.exists():
-            save_graph(graph_path, graph)
+        if not loaded_from_cache:
+            graph["extractor_sha256"] = extractor_sha256()
+            # Extraction stays outside this short per-key publication lock.
+            # A sibling artifact must be validated and reused, never overwritten.
+            with _writer_lock(graph_path.with_suffix(graph_path.suffix + ".lock")):
+                if graph_path.exists():
+                    published = load_graph(graph_path)
+                    if published["snapshot"]["commit"] != case["commit"]:
+                        raise ValueError("Cached graph commit does not match the requested case")
+                    if published.get("extractor_sha256") != extractor_sha256():
+                        raise ValueError("Cached graph has no matching extractor fingerprint")
+                    if digest(published) != digest(graph):
+                        raise ValueError("Concurrent graph publication differs from the fresh graph")
+                    graph = published
+                else:
+                    save_graph(graph_path, graph)
         pack = build_source_pack(graph, case["issue_text"], max_source_tokens=protocol["max_source_tokens"],
                                  min_files=protocol["minimum_candidate_files"])
         packed, _, induced_edges = _packed_source_graph(graph, pack)
@@ -293,7 +309,8 @@ def create_contexts(cases: list[dict], prepared: str | Path, output: str | Path,
             raise ValueError(f"Replication cannot materialize the preregistered primary subset: {missing}")
     rows = [row for case in selected for row in all_rows[case["case_id"]]]
     _assert_unchanged_implementation()
-    manifest = {"schema_version": 1, "stage": stage, "status": "prepared_not_frozen",
+    manifest = {"schema_version": 2, "response_contract_version": RESPONSE_CONTRACT_VERSION,
+                "stage": stage, "status": "prepared_not_frozen",
                 "implementation_sha256": _LOADED_IMPLEMENTATION,
                 "protocol_sha256": digest(protocol), "tokenizer_identity": token_identity,
                 "source_pack_rule": SOURCE_PACK_RULE, "model_edge_rule": MODEL_EDGE_RULE,
@@ -318,6 +335,10 @@ def freeze_protocol(protocol: dict, pilot_directory: str | Path, output: str | P
     manifest = read_json(pilot / "manifest.json")
     contexts = read_jsonl(pilot / "contexts.jsonl")
     records = read_jsonl(pilot / "records.jsonl")
+    if (protocol.get("schema_version") != 2 or protocol.get("response_contract_version") != RESPONSE_CONTRACT_VERSION
+            or manifest.get("schema_version") != 2 or manifest.get("response_contract_version") != RESPONSE_CONTRACT_VERSION
+            or any(c.get("response_contract_version") != RESPONSE_CONTRACT_VERSION for c in contexts)):
+        raise ValueError("Freeze requires fresh contexts and protocol for response contract v2")
     if manifest["stage"] != "pilot" or manifest["token_method"] != "tokenizer":
         raise ValueError("Freeze requires a pilot with exact model-tokenizer counts")
     if manifest["protocol_sha256"] != digest(protocol) or manifest["contexts_sha256"] != digest(contexts):
@@ -345,9 +366,12 @@ def freeze_protocol(protocol: dict, pilot_directory: str | Path, output: str | P
     required_generation = {"max_output_tokens": protocol["max_output_tokens"], "temperature": protocol["temperature"],
                            "thinking": False, "timeout_seconds": protocol["timeout_seconds"]}
     for record in records:
+        if record.get("schema_version") != RECORD_SCHEMA_VERSION or record.get("response_contract_version") != RESPONSE_CONTRACT_VERSION:
+            raise ValueError("Freeze requires fresh response-contract v2 records; legacy pilot outputs cannot be reused")
         arm = context_by_arm.get((record["case_id"], record["condition"]))
         if arm is None or record.get("context_sha256") != arm["context_sha256"] or record.get("source_sha256") != arm["source_sha256"]:
             raise ValueError("Stale or foreign pilot record: context/source hashes do not match")
+        validate_record_prediction(record, arm)
         if hashlib.sha256(arm["prompt"].encode("utf-8")).hexdigest() != arm["context_sha256"]:
             raise ValueError("Pilot prompt hash mismatch")
         backend = record.get("backend", {})
@@ -367,7 +391,8 @@ def freeze_protocol(protocol: dict, pilot_directory: str | Path, output: str | P
         output_tokens = record.get("output_tokens")
         if output_tokens is not None and (type(output_tokens) is not int or output_tokens > protocol["max_output_tokens"]):
             raise ValueError("Pilot output token budget exceeded")
-        if record["status"] == "error" and "out of memory" in str(record.get("error", "")).lower():
+        if (record.get("error_kind") == "out_of_memory"
+                or "out of memory" in str(record.get("error", "")).lower()):
             raise ValueError("Pilot memory fitting failed")
     if len(backend_fingerprints) != 1 or len(generation_fingerprints) != 1:
         raise ValueError("Pilot contains mixed runtime or generation fingerprints")
@@ -375,7 +400,7 @@ def freeze_protocol(protocol: dict, pilot_directory: str | Path, output: str | P
     if len(latest) != len(records) or set(latest) != expected:
         raise ValueError("Pilot is incomplete; every arm and sampling seed is required")
     attempted = [latest[key] for key in sorted(expected)]
-    parse_rate = sum(r["status"] == "ok" for r in attempted) / len(attempted)
+    parse_rate = sum(r["status"] in {"ok", "invalid_prediction"} and r.get("contract_parseable") is True for r in attempted) / len(attempted)
     if parse_rate < protocol["pilot_minimum_parse_rate"]:
         raise ValueError(f"Parse success {parse_rate:.1%} is below pilot threshold")
     for condition in protocol["conditions"]:
@@ -383,17 +408,23 @@ def freeze_protocol(protocol: dict, pilot_directory: str | Path, output: str | P
         if len(failures) > protocol["pilot_maximum_timeout_issues_per_condition"]:
             raise ValueError(f"Timeout gate failed for {condition}: {len(failures)} issues")
     clean = [r for r in attempted if r["condition"] == "clean"]
-    citation_rate = sum(bool((r.get("response") or {}).get("edge_ids")) for r in clean) / len(clean)
+    citation_rate = sum(r["status"] in {"ok", "invalid_prediction"} and bool(r.get("valid_graph_citations")) for r in clean) / len(clean)
     if citation_rate < protocol["pilot_minimum_graph_citation_rate"]:
         raise ValueError("Graph evidence rarely used; revise development task presentation before freezing")
     models = {r["model_name"] for r in attempted}
     if len(models) != 1:
         raise ValueError("Freeze requires one consistent primary model")
-    frozen = {"schema_version": 1, "status": "frozen", "protocol": protocol,
+    frozen = {"schema_version": 2, "response_contract_version": RESPONSE_CONTRACT_VERSION,
+              "status": "frozen", "protocol": protocol,
               "implementation_sha256": implementation_sha256(),
               "protocol_sha256": digest(protocol), "pilot_manifest_sha256": digest(manifest),
-              "pilot_records_sha256": digest(records), "primary_model": next(iter(models)),
-              "parse_rate": parse_rate, "graph_citation_rate": citation_rate,
+              "pilot_records_sha256": record_digest(records), "pilot_records_digest_rule": RECORD_DIGEST_RULE,
+              "pilot_records_file_sha256": hashlib.sha256((pilot / "records.jsonl").read_bytes()).hexdigest(),
+              "primary_model": next(iter(models)),
+              "parse_rate": parse_rate, "contract_parse_rate": parse_rate, "graph_citation_rate": citation_rate,
+              "within_budget_contract_parse_rate": parse_rate,
+              "observed_contract_parse_rate": sum(r["contract_parseable"] for r in attempted) / len(attempted),
+              "invalid_prediction_rate": sum(r.get("invalid_prediction", False) for r in attempted) / len(attempted),
               "tokenizer_identity": manifest["tokenizer_identity"], "backend_sha256": next(iter(backend_fingerprints))}
     output = Path(output)
     if output.exists() and read_json(output) != frozen:

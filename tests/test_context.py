@@ -6,6 +6,7 @@ from collections import Counter
 import unittest
 
 from graphtrust.context import ContextBudgetError, _rank_nodes, _terms, build_context, build_source_pack, is_production_path
+from graphtrust.prediction import RESPONSE_CONTRACT_VERSION
 
 
 def graph_fixture(files=12):
@@ -55,6 +56,13 @@ class ContextTests(unittest.TestCase):
             self.assertNotIn("SECRET_", context["prompt"])
         self.assertEqual(len({c["source_sha256"] for c in contexts}), 1)
         self.assertEqual(contexts[0]["visible_edge_ids"], [])
+        for context in contexts:
+            self.assertEqual(context["response_contract_version"], RESPONSE_CONTRACT_VERSION)
+            answer = context["prompt"].split("END RELATIONSHIPS\n", 1)[1]
+            self.assertIn('"files":["path.py"],"citations":[]', answer)
+            self.assertIn("abstain is optional", answer)
+            self.assertIn("copy paths and IDs exactly", answer)
+            self.assertLessEqual(context["input_tokens"], 4000)
 
     def test_overbudget_rejects_without_mutating_pack(self):
         graph = graph_fixture()

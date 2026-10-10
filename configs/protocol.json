@@ -41,7 +41,9 @@
   "minimum_candidate_files": 10,
   "minimum_eligible_edges": 5,
   "model_edge_rule": "supported_endpoints_and_original_callsite_visible_v1",
-  "name": "GraphTrust-SWE v1",
+  "name": "GraphTrust-SWE v1 / response protocol v2",
+  "response_contract_version": "files_citations_v2",
+  "maximum_citations": 2,
   "other_contrasts": "exploratory; no confirmatory multiple-comparison claim",
   "pilot_issues": 10,
   "pilot_maximum_timeout_issues_per_condition": 1,
@@ -62,7 +64,7 @@
   "sampling_seeds_replication": [
     17
   ],
-  "schema_version": 1,
+  "schema_version": 2,
   "secondary_contrasts": [
     {
       "left": "clean",

@@ -25,13 +25,13 @@ class ExperimentBundlerTests(unittest.TestCase):
         self.protocol = bundler.read_json(ROOT / "configs/protocol.json")
         # Tooling fixture only: clean source checkouts have no prebuilt dist wheel.
         # Preserve current source/protocol bytes without invoking a build backend.
-        self.wheel = self.root / "graphtrust_swe-0.1.0-py3-none-any.whl"
+        self.wheel = self.root / "graphtrust_swe-0.2.0-py3-none-any.whl"
         package = ROOT / "src/graphtrust"
         entries = {"graphtrust/" + path.relative_to(package).as_posix(): path.read_bytes()
             for path in sorted(package.rglob("*"))
             if path.is_file() and path.suffix in {".py", ".json", ".md"} and "__pycache__" not in path.parts}
-        metadata = "graphtrust_swe-0.1.0.dist-info/"
-        entries[metadata + "METADATA"] = b"Metadata-Version: 2.1\nName: graphtrust-swe\nVersion: 0.1.0\nRequires-Python: >=3.11\n"
+        metadata = "graphtrust_swe-0.2.0.dist-info/"
+        entries[metadata + "METADATA"] = b"Metadata-Version: 2.1\nName: graphtrust-swe\nVersion: 0.2.0\nRequires-Python: >=3.11\n"
         entries[metadata + "WHEEL"] = b"Wheel-Version: 1.0\nGenerator: synthetic-test-fixture\nRoot-Is-Purelib: true\nTag: py3-none-any\n"
         records = []
         for name, content in sorted(entries.items()):
@@ -46,7 +46,8 @@ class ExperimentBundlerTests(unittest.TestCase):
         self.code_hash = bundler.wheel_implementation(self.wheel)
         self.backend = {"name": "transformers", "model_path": "/kaggle/input/models/example/e2b/1",
             "checkpoint_sha256": "a" * 64, "tokenizer_sha256": "b" * 64, "enable_thinking": False}
-        self.freeze = {"status": "frozen", "protocol": self.protocol,
+        self.freeze = {"schema_version": 2, "response_contract_version": bundler.RESPONSE_CONTRACT_VERSION,
+            "status": "frozen", "protocol": self.protocol,
             "protocol_sha256": bundler.digest(self.protocol), "implementation_sha256": self.code_hash,
             "pilot_manifest_sha256": "c" * 64, "pilot_records_sha256": "d" * 64,
             "backend_sha256": bundler.digest(self.backend), "tokenizer_identity": "b" * 64,
@@ -65,11 +66,13 @@ class ExperimentBundlerTests(unittest.TestCase):
                 source = f"SOURCE s FILE source.py LINES 1-2\ndef f(): pass # {identity}\n"
                 for condition in bundler.CONDITIONS:
                     prompt = "ISSUE fixture-only\nSOURCE PACK\n" + source + "END SOURCE PACK\n" + condition
-                    rows.append({"case_id": identity, "repo": repo, "condition": condition, "prompt": prompt,
+                    rows.append({"response_contract_version": bundler.RESPONSE_CONTRACT_VERSION,
+                        "case_id": identity, "repo": repo, "condition": condition, "prompt": prompt,
                         "context_sha256": hashlib.sha256(prompt.encode()).hexdigest(),
                         "source_sha256": hashlib.sha256(source.encode()).hexdigest(), "input_tokens": 100,
                         "token_method": "tokenizer"})
-        manifest = {"stage": stage, "token_method": "tokenizer", "implementation_sha256": self.code_hash,
+        manifest = {"schema_version": 2, "response_contract_version": bundler.RESPONSE_CONTRACT_VERSION,
+            "stage": stage, "token_method": "tokenizer", "implementation_sha256": self.code_hash,
             "protocol_sha256": bundler.digest(self.protocol), "contexts_sha256": bundler.digest(rows),
             "tokenizer_identity": backend["tokenizer_sha256"], "case_ids": ids, "selection_sha256": bundler.digest(ids),
             "cases": len(ids), "contexts": len(rows), "shortfalls": {}, "selection_uses_gold": False,
@@ -313,7 +316,7 @@ class ExperimentBundlerTests(unittest.TestCase):
 
     def test_schedule_matches_current_runner_and_batch_cap_counts_new_attempts(self):
         from graphtrust.inference import MockBackend, run_contexts
-        backend = MockBackend({"files": ["invisible.py"], "source_ids": [], "edge_ids": [], "abstain": False})
+        backend = MockBackend({"files": ["invisible.py"], "citations": [], "abstain": False})
         rows = self.rows[:2]
         output = self.root / "synthetic-contract-only.jsonl"
         expected = bundler.schedule(rows, [17, 42], "fixture", backend.identity, self.protocol)
@@ -327,7 +330,7 @@ class ExperimentBundlerTests(unittest.TestCase):
         self.assertEqual(second["attempted"], 1)
         self.assertTrue(output.read_bytes().startswith(old_bytes))
         self.assertEqual([r["run_id"] for r in records], list(expected)[:3])
-        self.assertEqual([r["status"] for r in records], ["parse_error"] * 3)
+        self.assertEqual([r["status"] for r in records], ["invalid_prediction"] * 3)
         self.assertTrue(all(r["synthetic"] for r in records))
         with self.assertRaisesRegex(ValueError, "Synthetic"):
             bundler.validate_history(records, bundler.read_jsonl(Path(str(output) + ".attempts.jsonl")), expected)
@@ -345,6 +348,36 @@ class ExperimentBundlerTests(unittest.TestCase):
         path.write_text(json.dumps(record), encoding="utf8")
         with self.assertRaisesRegex(ValueError, "Unterminated"):
             bundler.read_jsonl(path)
+
+    def test_unicode_raw_outputs_and_paths_preserve_history_bytes_and_identity(self):
+        from graphtrust.inference import run_contexts
+        from graphtrust.prediction import canonical_record, record_digest
+        # Offline schedule/serialization fixture; neither checkpoint nor outputs
+        # are empirical evidence, despite exercising the non-synthetic gate.
+        class TextFixture:
+            synthetic = False
+            identity = {"name": "unicode-contract-test-fixture"}
+            def generate(self, *args, **kwargs):
+                return {"text": '{"files":["café.py"],"citations":["café.py"]}'}
+        row = deepcopy(self.rows[0])
+        row.update(visible_files=["café.py"], visible_source_ids=[], visible_edge_ids=[])
+        output = self.root / "unicode-history.jsonl"
+        backend = TextFixture()
+        expected = bundler.schedule([row], [17], "modèle-fixture", backend.identity, self.protocol)
+        ledger = bundler.reserve_session({}, "unicode-fixture", self.policy, output, expected)
+        run_contexts([row], output, backend, [17], "modèle-fixture", max_output_tokens=256, timeout_seconds=90, temperature=.2)
+        before = output.read_bytes()
+        records, starts = bundler.read_jsonl(output), bundler.read_jsonl(Path(str(output) + ".attempts.jsonl"))
+        terminal, journal = bundler.validate_history(records, starts, expected)
+        self.assertEqual(set(terminal), set(expected))
+        self.assertEqual(before, (canonical_record(records[0]) + "\n").encode("utf-8"))
+        self.assertEqual(record_digest(records[0]), hashlib.sha256(before.rstrip(b"\n")).hexdigest())
+        self.assertIn(b"caf\\u00e9.py", before)
+        resumed = run_contexts([row], output, backend, [17], "modèle-fixture", temperature=.2)
+        self.assertEqual(resumed["attempted"], 0)
+        self.assertEqual(output.read_bytes(), before)
+        ledger["sessions"][-1].update(status="finished", history_after=bundler.history_snapshot(output))
+        bundler.validate_ledger_history(ledger, output, expected)
 
     def test_conservative_crashed_session_quota_and_session_cap(self):
         policy = {**self.policy, "stage_seconds": 7200, "free_quota_seconds": 7200, "max_sessions": 2}

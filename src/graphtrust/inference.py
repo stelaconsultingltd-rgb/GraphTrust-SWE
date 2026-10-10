@@ -11,10 +11,13 @@ import hashlib
 import json
 import math
 import os
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 import re
 import time
 from typing import Protocol
+
+from .prediction import (PredictionError, RECORD_SCHEMA_VERSION, RESPONSE_CONTRACT_VERSION,
+                         parse_prediction, validate_prediction)
 
 
 class Backend(Protocol):
@@ -24,12 +27,15 @@ class Backend(Protocol):
     def generate(self, prompt: str, seed: int, max_output_tokens: int, temperature: float) -> dict: ...
 
 
-class PredictionError(ValueError):
-    """Output failed the preregistered JSON schema."""
-
-
 def _json(value) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
+
+
+def _record_json(value) -> str:
+    # Escape Unicode in durable journals without changing run-ID hash encoding.
+    # This can retain even a malformed backend string containing lone surrogates.
+    from .prediction import canonical_record
+    return canonical_record(value)
 
 
 def _hash(value) -> str:
@@ -91,50 +97,6 @@ def tokenizer_fingerprint(tokenizer) -> str:
     })
 
 
-def _unique_list(value, name: str, limit: int | None = None) -> list[str]:
-    if not isinstance(value, list) or any(not isinstance(item, str) or not item.strip() for item in value):
-        raise PredictionError(f"{name} must be a list of nonempty strings")
-    if len(value) != len(set(value)):
-        raise PredictionError(f"{name} contains duplicate entries")
-    if limit is not None and len(value) > limit:
-        raise PredictionError(f"{name} contains more than {limit} entries")
-    return value
-
-
-def parse_prediction(text: str) -> dict:
-    """Strict JSON only: no fenced blocks, salvaged fragments, or coercions."""
-    if not isinstance(text, str):
-        raise PredictionError("output must be text")
-    def unique_object(pairs):
-        result = {}
-        for key, value in pairs:
-            if key in result:
-                raise PredictionError(f"duplicate JSON key: {key}")
-            result[key] = value
-        return result
-    try:
-        data = json.loads(text, object_pairs_hook=unique_object, parse_constant=lambda value: (_ for _ in ()).throw(ValueError(value)))
-    except (ValueError, TypeError) as exc:
-        raise PredictionError("output is not a JSON object") from exc
-    keys = {"files", "source_ids", "edge_ids", "abstain"}
-    if not isinstance(data, dict) or set(data) != keys:
-        raise PredictionError("output must contain exactly files, source_ids, edge_ids, abstain")
-    _unique_list(data["files"], "files", 5)
-    _unique_list(data["source_ids"], "source_ids")
-    _unique_list(data["edge_ids"], "edge_ids")
-    if type(data["abstain"]) is not bool:
-        raise PredictionError("abstain must be a JSON boolean")
-    for path in data["files"]:
-        posix = PurePosixPath(path)
-        if path != str(posix) or "\\" in path or posix.is_absolute() or ".." in posix.parts or re.match(r"^[A-Za-z]:", path):
-            raise PredictionError("files must be normalized relative POSIX paths")
-    if data["abstain"] and data["files"]:
-        raise PredictionError("abstention cannot include predicted files")
-    if not data["abstain"] and not data["files"]:
-        raise PredictionError("empty file predictions require abstain=true")
-    return data
-
-
 def _backend_identity(backend) -> dict:
     identity = getattr(backend, "identity", None)
     if callable(identity):
@@ -185,17 +147,21 @@ def run_contexts(
                     raise ValueError(f"invalid existing JSONL record at line {number}; preserve and repair the log explicitly") from exc
                 if run_id in seen:
                     raise ValueError(f"duplicate run ID in existing log at line {number}")
+                if record.get("schema_version") != RECORD_SCHEMA_VERSION or record.get("response_contract_version") != RESPONSE_CONTRACT_VERSION:
+                    raise ValueError("Existing records use a different response protocol; preserve them and use a new versioned output log")
                 seen[run_id] = record
     scheduled = []
     scheduled_ids = set()
     for context in contexts:
+        if context.get("response_contract_version") != RESPONSE_CONTRACT_VERSION:
+            raise ValueError("Contexts use a different response protocol; create fresh versioned contexts")
         if _text_hash(context["prompt"]) != context["context_sha256"]:
             raise ValueError("context hash does not match prompt")
         validate_context = getattr(backend, "validate_context", None)
         if validate_context is not None:
             validate_context(context["prompt"], max_output_tokens)
         for seed in seeds:
-            key = {"context_sha256": context["context_sha256"], "case_id": context["case_id"], "condition": context["condition"], "model_name": model_name, "backend": identity, "seed": seed, "generation": config}
+            key = {"context_sha256": context["context_sha256"], "case_id": context["case_id"], "condition": context["condition"], "model_name": model_name, "backend": identity, "seed": seed, "generation": config, "response_contract_version": RESPONSE_CONTRACT_VERSION}
             run_id = _hash(key)
             if run_id in scheduled_ids:
                 raise ValueError("duplicate arm/seed in requested run")
@@ -212,6 +178,8 @@ def run_contexts(
                     run_id = record["run_id"]
                     if record["status"] != "started" or run_id in starts:
                         raise ValueError("invalid or duplicate start")
+                    if record.get("schema_version") != RECORD_SCHEMA_VERSION or record.get("response_contract_version") != RESPONSE_CONTRACT_VERSION:
+                        raise ValueError("Attempt journal uses a different response protocol")
                     starts[run_id] = record
                 except (ValueError, KeyError, TypeError) as exc:
                     raise ValueError(f"invalid attempt journal at line {number}; preserve and repair explicitly") from exc
@@ -222,7 +190,7 @@ def run_contexts(
         for run_id, start_record in starts.items():
             if run_id not in seen:
                 interrupted = dict(start_record, status="interrupted", error="Process ended before a terminal record; automatic retry is disabled", error_kind="process_interruption", latency_seconds=None)
-                handle.write(_json(interrupted) + "\n")
+                handle.write(_record_json(interrupted) + "\n")
                 handle.flush()
                 os.fsync(handle.fileno())
                 seen[run_id] = interrupted
@@ -234,17 +202,18 @@ def run_contexts(
             if max_calls is not None and attempted >= max_calls:
                 continue
             record = {
-                "schema_version": "1.0", "run_id": run_id,
+                "schema_version": RECORD_SCHEMA_VERSION, "response_contract_version": RESPONSE_CONTRACT_VERSION, "run_id": run_id,
                 "case_id": context["case_id"], "repo": context.get("repo", ""), "condition": context["condition"],
                 "model_name": model_name, "backend": identity, "seed": seed, "generation": config,
                 "source_sha256": context["source_sha256"], "context_sha256": context["context_sha256"],
                 "visible_files": context.get("visible_files", []), "visible_source_ids": context.get("visible_source_ids", []), "visible_edge_ids": context.get("visible_edge_ids", []),
                 "started_at": datetime.now(timezone.utc).isoformat(), "synthetic": synthetic,
                 "status": "error", "raw_output": None, "response": None, "prediction": None,
+                "contract_parseable": False, "invalid_prediction": False,
                 "input_tokens": context.get("input_tokens"), "input_token_method": context.get("token_method", "unknown"),
                 "output_tokens": None, "timeout_enforcement": "elapsed_after_return",
             }
-            journal_handle.write(_json(dict(record, status="started")) + "\n")
+            journal_handle.write(_record_json(dict(record, status="started")) + "\n")
             journal_handle.flush()
             os.fsync(journal_handle.fileno())
             started = time.monotonic()
@@ -267,11 +236,9 @@ def run_contexts(
                     prediction = parse_prediction(result["text"])
                     record["prediction"] = prediction
                     record["response"] = prediction
-                    invalid_files = sorted(set(prediction["files"]) - set(context.get("visible_files", [])))
-                    invalid_sources = sorted(set(prediction["source_ids"]) - set(context.get("visible_source_ids", [])))
-                    invalid_edges = sorted(set(prediction["edge_ids"]) - set(context.get("visible_edge_ids", [])))
-                    record.update(invalid_files=invalid_files, invalid_source_ids=invalid_sources, invalid_edge_ids=invalid_edges)
-                    record["status"] = "parse_error" if invalid_files or invalid_sources or invalid_edges else "ok"
+                    record["contract_parseable"] = True
+                    record.update(validate_prediction(prediction, context))
+                    record["status"] = "invalid_prediction" if record["invalid_prediction"] else "ok"
                 except PredictionError as exc:
                     record["status"] = "parse_error"
                     record["error"] = str(exc)
@@ -288,7 +255,7 @@ def run_contexts(
             if record["latency_seconds"] > timeout_seconds:
                 record["completed_status"] = record["status"]
                 record["status"] = "timeout"
-            handle.write(_json(record) + "\n")
+            handle.write(_record_json(record) + "\n")
             handle.flush()
             os.fsync(handle.fileno())
             seen[run_id] = record
@@ -312,7 +279,7 @@ class MockBackend:
             result = self.response
         else:
             matches = re.findall(r"^SOURCE (\S+) FILE (\S+) LINES", prompt, re.MULTILINE)
-            result = {"files": [matches[0][1]] if matches else [], "source_ids": [matches[0][0]] if matches else [], "edge_ids": [], "abstain": not bool(matches)}
+            result = {"files": [matches[0][1]] if matches else [], "citations": [matches[0][0]] if matches else [], "abstain": not bool(matches)}
         text = _json(result)
         return {"text": text, "input_tokens": len(prompt.encode("utf-8")), "output_tokens": len(text.encode("utf-8")), "token_method": "byte_upper_bound"}
 

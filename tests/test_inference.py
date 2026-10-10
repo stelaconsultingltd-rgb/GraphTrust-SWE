@@ -9,11 +9,12 @@ from contextlib import nullcontext
 from types import SimpleNamespace
 
 from graphtrust.inference import LlamaCppBackend, MockBackend, PredictionError, TransformersBackend, checkpoint_manifest, parse_prediction, run_contexts, tokenizer_fingerprint
+from graphtrust.prediction import RECORD_SCHEMA_VERSION, RESPONSE_CONTRACT_VERSION
 
 
 def context_fixture():
     prompt = "SOURCE pkg/a.py::f FILE pkg/a.py LINES 1-2 TRUNCATED false\ndef f():\n    pass\nEND SOURCE\n"
-    return {"case_id": "fixture-1", "repo": "fixture", "condition": "source_only", "prompt": prompt, "source_sha256": hashlib.sha256(prompt.encode()).hexdigest(), "context_sha256": hashlib.sha256(prompt.encode()).hexdigest(), "visible_files": ["pkg/a.py"], "visible_source_ids": ["pkg/a.py::f"], "visible_edge_ids": [], "input_tokens": len(prompt), "token_method": "byte_upper_bound"}
+    return {"response_contract_version": RESPONSE_CONTRACT_VERSION, "case_id": "fixture-1", "repo": "fixture", "condition": "source_only", "prompt": prompt, "source_sha256": hashlib.sha256(prompt.encode()).hexdigest(), "context_sha256": hashlib.sha256(prompt.encode()).hexdigest(), "visible_files": ["pkg/a.py"], "visible_source_ids": ["pkg/a.py::f"], "visible_edge_ids": [], "input_tokens": len(prompt), "token_method": "byte_upper_bound"}
 
 
 class BrokenBackend:
@@ -30,17 +31,16 @@ class BrokenBackend:
 
 class InferenceTests(unittest.TestCase):
     def test_strict_json_validation(self):
-        prediction = {"files": ["pkg/a.py"], "source_ids": [], "edge_ids": [], "abstain": False}
+        prediction = {"files": ["pkg/a.py"], "citations": [], "abstain": False}
         self.assertEqual(parse_prediction(json.dumps(prediction)), prediction)
+        self.assertEqual(parse_prediction("```json\n" + json.dumps(prediction) + "\n```"), prediction)
+        self.assertEqual(parse_prediction('{"files":["pkg/a.py"]}'), prediction)
         invalid = [
-            "```json\n" + json.dumps(prediction) + "\n```",
+            "```\n" + json.dumps(prediction) + "\n```",
             json.dumps(dict(prediction, abstain="false")),
-            json.dumps(dict(prediction, files=["../escape.py"])),
-            json.dumps(dict(prediction, files=["a.py"] * 6)),
-            json.dumps(dict(prediction, files=[])),
-            json.dumps(dict(prediction, abstain=True)),
-            json.dumps(dict(prediction, unknown=1)),
-            '{"files":["a.py"],"files":["b.py"],"source_ids":[],"edge_ids":[],"abstain":false}',
+            json.dumps(dict(prediction, files="a.py")),
+            '{"files":["a.py"],"files":["b.py"]}',
+            "Answer: " + json.dumps(prediction),
         ]
         for text in invalid:
             with self.subTest(text=text), self.assertRaises(PredictionError):
@@ -85,15 +85,51 @@ class InferenceTests(unittest.TestCase):
             self.assertEqual(record["timeout_enforcement"], "elapsed_after_return")
 
     def test_invalid_citations_and_paths_preserved(self):
-        response = {"files": ["unknown.py"], "source_ids": ["unknown"], "edge_ids": ["invented"], "abstain": False}
+        response = {"files": ["unknown.py"], "citations": ["unknown", "invented"], "abstain": False}
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "results.jsonl"
             run_contexts([context_fixture()], output, MockBackend(response), [1], "synthetic")
             record = json.loads(output.read_text())
-            self.assertEqual(record["status"], "parse_error")
+            self.assertEqual(record["status"], "invalid_prediction")
+            self.assertTrue(record["contract_parseable"])
             self.assertEqual(record["invalid_files"], ["unknown.py"])
-            self.assertEqual(record["invalid_edge_ids"], ["invented"])
+            self.assertEqual(record["invalid_citations"], ["unknown", "invented"])
             self.assertEqual(record["response"], response)
+
+    def test_malformed_numeric_unicode_outputs_always_leave_terminal_records(self):
+        texts = ['{"files":["pkg/a.py"],"extra":1e999}',
+                 '{"files":["pkg/a.py"],"extra":{"x":-1e999}}',
+                 '{"files":["\\ud800.py"]}', '{"files":["pkg/a.py"],"\\udfff":0}',
+                 '{"files":["pkg/a.py"],"extra":["\\ud800"]}',
+                 '{"files":["' + chr(0xd800) + '.py"]}']
+        class RawBackend:
+            synthetic = True
+            identity = {"name": "malformed-text-fixture"}
+            def generate(self, *args, **kwargs):
+                return {"text": text}
+        for text in texts:
+            with self.subTest(text=repr(text)), tempfile.TemporaryDirectory() as directory:
+                output = Path(directory) / "results.jsonl"
+                result = run_contexts([context_fixture()], output, RawBackend(), [1], "synthetic")
+                record = json.loads(output.read_text(encoding="utf-8"))
+                self.assertEqual(result["statuses"], {"parse_error": 1})
+                self.assertEqual(record["raw_output"], text)
+                self.assertFalse(record["contract_parseable"])
+                self.assertIsNone(record["response"])
+                second = run_contexts([context_fixture()], output, RawBackend(), [1], "synthetic")
+                self.assertEqual(second["attempted"], 0)
+
+    def test_legacy_log_and_context_cannot_be_resumed_as_v2(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "results.jsonl"
+            output.write_text(json.dumps({"schema_version": "1.0", "run_id": "old"}) + "\n")
+            with self.assertRaisesRegex(ValueError, "contract|legacy|version"):
+                run_contexts([context_fixture()], output, MockBackend(), [1], "synthetic")
+            output.unlink()
+            context = context_fixture()
+            del context["response_contract_version"]
+            with self.assertRaisesRegex(ValueError, "contract|version"):
+                run_contexts([context], output, MockBackend(), [1], "synthetic")
 
     def test_corrupt_existing_log_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
