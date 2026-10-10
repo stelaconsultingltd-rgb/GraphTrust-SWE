@@ -1,0 +1,68 @@
+{
+  "active_source": {
+    "acquisition_date": "2026-10-10",
+    "acquisition_method": "official Kaggle model-instance-version per-file download API",
+    "files": [
+      {
+        "bytes": 2068,
+        "name": "tokenizer_config.json",
+        "sha256": "97af7f9a43d9c26b4ae9558b39c2d6ffed60b9869f2cf2b9a5282b05c6dac67c"
+      },
+      {
+        "bytes": 11926,
+        "name": "chat_template.jinja",
+        "sha256": "55572b8d3c8342044e25874c73fe5234b661fa0a57a57f6ef75b58e03d7d959a"
+      },
+      {
+        "bytes": 32169626,
+        "name": "tokenizer.json",
+        "sha256": "cc8d3a0ce36466ccc1278bf987df5f71db1719b9ca6b4118264f45cb627bfe0f"
+      },
+      {
+        "bytes": 1689,
+        "name": "processor_config.json",
+        "sha256": "32bdf45d2ad4cc29a0822ddd157a182de76644f0419a6228d151495256e9813c"
+      },
+      {
+        "bytes": 4954,
+        "name": "config.json",
+        "sha256": "1b28f3d2c3100f6c594754b81107428bd7b822a7f48272ca681dae9d2ec38330"
+      }
+    ],
+    "local_directory": "models/e2b-kaggle-tokenizer",
+    "model_instance": "google/gemma-4/Transformers/gemma-4-e2b-it/1",
+    "model_version": 1,
+    "provider": "Kaggle",
+    "source_url": "https://www.kaggle.com/models/google/gemma-4/transformers/gemma-4-e2b-it/1",
+    "tokenizer_identity": "ca7db376622726274dd8d16d6fa0a7fe86001167152052945d235c3b8b13bbf6",
+    "tokenizers_versions_checked": [
+      "0.23.1",
+      "0.23.3"
+    ],
+    "transformers_version": "5.19.0"
+  },
+  "diagnostic_evidence": {
+    "context_rebuild_directory": "runs/pilot-tokenized-v9",
+    "failed_pilot_log": "runs/kaggle-pilot-v8/version-2-output/pilot-runtime.log",
+    "file_comparison": "runs/kaggle-tokenizer-audit/file-comparison.json",
+    "local_runtime": "runs/kaggle-tokenizer-audit/local-runtime-comparison.json",
+    "processor_runtime_status": "not locally available; actual Kaggle AutoProcessor identity and prompt counts must pass the existing runtime guards",
+    "real_localization_calls_in_failed_job": 0,
+    "source_package_change_required": false,
+    "tokenizers_0231_runtime": "runs/kaggle-tokenizer-audit/tokenizers-0231-comparison.json"
+  },
+  "prior_preflights": [
+    {
+      "original_lock": {
+        "local_directory": "models/e2b-tokenizer",
+        "model": "google/gemma-4-E2B-it",
+        "revision": "3e22461f65e89153144f8adb70e3b8c2cc9845a7"
+      },
+      "provider": "Hugging Face",
+      "reason": "Hugging Face revision has a different tokenizer_config.json and chat_template.jinja from the actual Kaggle v1 attachment; it must not be described as that attachment.",
+      "status": "superseded_for_Kaggle_model_instance_version_1",
+      "tokenizer_identity": "6ea0b23474e17e998bf2d0b4b2e593c93b91526bc478818a4f9b74d64c68a4a4"
+    }
+  ],
+  "schema_version": 2
+}

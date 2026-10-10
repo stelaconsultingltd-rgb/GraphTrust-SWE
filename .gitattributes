@@ -1,0 +1,7 @@
+*.py text eol=lf
+*.json -text
+*.jsonl -text
+*.ipynb -text
+*.toml text eol=lf
+*.md text eol=lf
+*.txt text eol=lf

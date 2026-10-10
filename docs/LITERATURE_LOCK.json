@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "review_date_perth": "2026-10-10",
+  "purpose": "Related-work source identity only; not an experimental baseline or a GraphTrust-SWE protocol freeze.",
+  "papers": [
+    {
+      "id": "when-retrieval-hurts-code-completion",
+      "version": "arXiv:2605.14478v1",
+      "source_url": "https://arxiv.org/pdf/2605.14478v1",
+      "sha256": "492b3ac4f7d78eb373386a7ec0f77ecfea12660be580d07e707ffc5276fdb8f2",
+      "retrieved_at_utc": "2026-10-10T05:00:26.469364+00:00",
+      "reviewed_sections": [
+        "3.1-3.11",
+        "6.1-6.10",
+        "7"
+      ]
+    },
+    {
+      "id": "repograph",
+      "version": "ICLR 2025 conference paper",
+      "source_url": "https://proceedings.iclr.cc/paper_files/paper/2025/file/4a4a3c197deac042461c677219efd36c-Paper-Conference.pdf",
+      "sha256": "9debb37a4477f38a7480ea2e9cf7d852c57abdaea8d2c96c136af5c5746f74c6",
+      "retrieved_at_utc": "2026-10-10T05:00:30.160401+00:00",
+      "reviewed_sections": [
+        "3.1-3.2",
+        "4.1-4.2",
+        "5.2-5.4",
+        "Appendix A",
+        "Appendix E"
+      ]
+    }
+  ],
+  "public_resource": {
+    "repository": "https://github.com/danielmantiglia/codegraph-loc",
+    "commit": "24fc2779a1c838b28f64252a959beddde8dc64a5",
+    "commit_date_utc": "2026-10-09T20:13:46Z",
+    "commit_date_perth": "2026-10-10T04:13:46+08:00",
+    "source_license": "Apache-2.0",
+    "experimental_reproduction_performed": false,
+    "files": [
+      {
+        "path": "README.md",
+        "source_url": "https://raw.githubusercontent.com/danielmantiglia/codegraph-loc/24fc2779a1c838b28f64252a959beddde8dc64a5/README.md",
+        "sha256": "d95766448bf42307c57982310c428bcaf3338e670d22125af38e73ef5e49749a"
+      },
+      {
+        "path": "LICENSE",
+        "source_url": "https://raw.githubusercontent.com/danielmantiglia/codegraph-loc/24fc2779a1c838b28f64252a959beddde8dc64a5/LICENSE",
+        "sha256": "09e8a9bcec8067104652c168685ab0931e7868f9c8284b66f5ae6edae5f1130b"
+      },
+      {
+        "path": "docs/experiments_log.md",
+        "source_url": "https://raw.githubusercontent.com/danielmantiglia/codegraph-loc/24fc2779a1c838b28f64252a959beddde8dc64a5/docs/experiments_log.md",
+        "sha256": "60f1007ef0790d5a95522c60ce280ccc154dc745f29c0efd95fd427d5339ed28"
+      },
+      {
+        "path": "docs/preregistration_agent.md",
+        "source_url": "https://raw.githubusercontent.com/danielmantiglia/codegraph-loc/24fc2779a1c838b28f64252a959beddde8dc64a5/docs/preregistration_agent.md",
+        "sha256": "23dc69e6fcef9d0fe5da33da57c1a8621f40dd2824c553bfaebefee53677a024"
+      },
+      {
+        "path": "docs/preregistration_heldout.md",
+        "source_url": "https://raw.githubusercontent.com/danielmantiglia/codegraph-loc/24fc2779a1c838b28f64252a959beddde8dc64a5/docs/preregistration_heldout.md",
+        "sha256": "203256749ff61d03fe0799e7b3de588bde998ccc01558d12f8bd3dc7d758c710"
+      },
+      {
+        "path": "src/cgl/agent.py",
+        "source_url": "https://raw.githubusercontent.com/danielmantiglia/codegraph-loc/24fc2779a1c838b28f64252a959beddde8dc64a5/src/cgl/agent.py",
+        "sha256": "a429c25540cfb9c254a5a1c24a6ed307a5bc6282572f51a0036a09def94224f7"
+      },
+      {
+        "path": "src/cgl/bench.py",
+        "source_url": "https://raw.githubusercontent.com/danielmantiglia/codegraph-loc/24fc2779a1c838b28f64252a959beddde8dc64a5/src/cgl/bench.py",
+        "sha256": "b0460d3d1229e221ca574e854857cef19e78b736c9d658ad92b86edd7c6b5aef"
+      },
+      {
+        "path": "src/cgl/graph.py",
+        "source_url": "https://raw.githubusercontent.com/danielmantiglia/codegraph-loc/24fc2779a1c838b28f64252a959beddde8dc64a5/src/cgl/graph.py",
+        "sha256": "9e217f214b8280faad6944ad4b17ebc7498e61918fabb31731e9cd29735edf95"
+      },
+      {
+        "path": "src/cgl/pipeline.py",
+        "source_url": "https://raw.githubusercontent.com/danielmantiglia/codegraph-loc/24fc2779a1c838b28f64252a959beddde8dc64a5/src/cgl/pipeline.py",
+        "sha256": "c46fb56cae0b6687fd14fa489c9f519eeab3fc416f32d6dcda7b345292f9e4cc"
+      },
+      {
+        "path": "scripts/10_build_llm_prompts.py",
+        "source_url": "https://raw.githubusercontent.com/danielmantiglia/codegraph-loc/24fc2779a1c838b28f64252a959beddde8dc64a5/scripts/10_build_llm_prompts.py",
+        "sha256": "d266bb4ac53c936796d9103d552bd85fc9a6c87ae995bfe5001bced42cf91943"
+      },
+      {
+        "path": "scripts/12_eval_llm.py",
+        "source_url": "https://raw.githubusercontent.com/danielmantiglia/codegraph-loc/24fc2779a1c838b28f64252a959beddde8dc64a5/scripts/12_eval_llm.py",
+        "sha256": "e1974105360babe6c9c5fe3f8b70c6caeeb8b0bb1c4f6534322eea226e0a3a8a"
+      },
+      {
+        "path": "scripts/18_eval_agent.py",
+        "source_url": "https://raw.githubusercontent.com/danielmantiglia/codegraph-loc/24fc2779a1c838b28f64252a959beddde8dc64a5/scripts/18_eval_agent.py",
+        "sha256": "a800dc285d83c7d6deb562bb2fe4884d1eeab3fa467e402d237f4478b2cf85fa"
+      },
+      {
+        "path": "results/agent/gemma-4-31b-it/summary.json",
+        "source_url": "https://raw.githubusercontent.com/danielmantiglia/codegraph-loc/24fc2779a1c838b28f64252a959beddde8dc64a5/results/agent/gemma-4-31b-it/summary.json",
+        "sha256": "fe8b6137dd98c842cd8423ff86a852817bd7e2b6e5a3b025b8b74a69b454583a"
+      }
+    ]
+  },
+  "local_evidence_directory": "runs/literature/2026-10-10",
+  "raw_sources_are_git_ignored": true,
+  "remaining_checks": [
+    "Include this lock in the final release manifest.",
+    "Repeat the primary-source novelty search before submission."
+  ]
+}

@@ -1,0 +1,14 @@
+GraphTrust-SWE
+Copyright 2026 GraphTrust-SWE contributors.
+
+This package's original code and synthetic fixtures are licensed Apache-2.0.
+SWE-bench is a separately licensed resource. Cite the SWE-bench authors and
+preserve the dataset's license and the licenses of each underlying repository.
+Source snapshots are downloaded from the original repository at the benchmark
+base commit; extracted LICENSE/COPYING/NOTICE files remain with each snapshot.
+Model checkpoint rights are governed by the corresponding model license.
+No ownership or relicensing of third-party repository source is asserted.
+
+SWE-bench: https://github.com/SWE-bench/SWE-bench
+SWE-bench Lite: https://huggingface.co/datasets/princeton-nlp/SWE-bench_Lite
+Gemma 4: https://ai.google.dev/gemma

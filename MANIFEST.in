@@ -1,0 +1,18 @@
+include LICENSE NOTICE README.md RELEASE_NOTES.md AGENTS.md pyproject.toml MANIFEST.in
+include .gitattributes .gitignore requirements-local.lock.txt
+recursive-include configs *.json
+recursive-include docs *.md *.json
+recursive-include scripts *.py
+recursive-include notebooks *.ipynb
+recursive-include fixtures/synthetic *.py README.md
+recursive-include tests *.py
+recursive-include src/graphtrust *.py *.json *.md
+prune .agent-handoff
+prune .git
+prune .venv
+prune data
+prune runs
+prune models
+prune build
+prune dist
+global-exclude __pycache__ *.py[cod] *.log .DS_Store

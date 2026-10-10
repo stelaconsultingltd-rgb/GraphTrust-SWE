@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "verified_date": "2026-10-10",
+  "status": "checkpoint_selection_preregistered_runtime_untested",
+  "metadata_method": "Kaggle get_model_variation and list_model_variation_version_files read-only APIs; official GitHub source inspection",
+  "weights_downloaded_by_review": false,
+  "primary_transformers": {
+    "model_id": "google/gemma-4-E2B-it",
+    "tokenizer_lock": "docs/TOKENIZER_LOCK.json",
+    "checkpoint_sha256": null,
+    "checkpoint_hash_policy": "Hash all local checkpoint assets at runtime and bind each run identity to the checkpoint manifest before scientific freeze."
+  },
+  "secondary_replication": {
+    "model_id": "google/gemma-4",
+    "framework": "Gguf",
+    "instance_slug": "gemma-4-e4b-it-qat-q4_0-gguf",
+    "kaggle_model_data_source": "google/gemma-4/Gguf/gemma-4-e4b-it-qat-q4_0-gguf/2",
+    "url": "https://www.kaggle.com/models/google/gemma-4/Gguf/gemma-4-e4b-it-qat-q4_0-gguf/2",
+    "variation_id": 681795,
+    "version_id": 897262,
+    "version_number": 2,
+    "license_name": "Apache 2.0",
+    "quantization": "official QAT Q4_0",
+    "total_uncompressed_bytes": 6146519531,
+    "text_model_file": "gemma-4-E4B_q4_0-it.gguf",
+    "text_model_bytes": 5154939136,
+    "text_model_sha256": null,
+    "other_files": [
+      {"name": "gemma-4-E4B-it-mmproj.gguf", "bytes": 991551904, "needed_for_text_only_study": false},
+      {"name": "README.md", "bytes": 28491}
+    ],
+    "design": "Preregistered balanced 30-issue subset of the primary holdout, six matched conditions, one sampling seed (17), maximum 180 attempts; report separately from primary model."
+  },
+  "primary_gguf_fallback": {
+    "model_id": "google/gemma-4",
+    "framework": "Gguf",
+    "instance_slug": "gemma-4-e2b-it-qat-q4_0-gguf",
+    "kaggle_model_data_source": "google/gemma-4/Gguf/gemma-4-e2b-it-qat-q4_0-gguf/2",
+    "url": "https://www.kaggle.com/models/google/gemma-4/Gguf/gemma-4-e2b-it-qat-q4_0-gguf/2",
+    "variation_id": 681787,
+    "version_id": 897276,
+    "version_number": 2,
+    "license_name": "Apache 2.0",
+    "quantization": "official QAT Q4_0",
+    "total_uncompressed_bytes": 4336375915,
+    "text_model_file": "gemma-4-E2B_q4_0-it.gguf",
+    "text_model_bytes": 3349514112,
+    "text_model_sha256": null,
+    "other_files": [
+      {"name": "gemma-4-E2B-it-mmproj.gguf", "bytes": 986833312, "needed_for_text_only_study": false},
+      {"name": "README.md", "bytes": 28491}
+    ],
+    "activation_rule": "Only if the development pilot requires switching the entire primary study before freeze; rebuild all contexts with this GGUF backend and repeat the complete pilot. Never substitute individual failing holdout calls."
+  },
+  "llama_cpp_python_build": {
+    "repository": "https://github.com/abetlen/llama-cpp-python",
+    "commit": "1652066e0af45f2313b339670ef9555e8a54e545",
+    "commit_date": "2026-10-01T05:43:42Z",
+    "source_version": "0.3.36",
+    "vendored_llama_cpp_commit": "0c1e57098bba43ac29e6e3b677cdceebdd22334f",
+    "gemma4_architecture_source_verified": "src/models/gemma4.cpp",
+    "jinja_enable_thinking_keyword_forwarding_verified": true,
+    "cuda_cmake_args": "-DGGML_CUDA=on",
+    "prebuilt_wheel": null,
+    "built_wheel_sha256": null,
+    "build_and_runtime_tested": false
+  },
+  "standalone_llama_cpp_reference": {
+    "repository": "https://github.com/ggml-org/llama.cpp",
+    "commit": "f2918cabbffe8abf8e2a90c1c089085fa116c2cf",
+    "commit_date": "2026-10-10T04:02:11Z",
+    "role": "Documented standalone alternative; GraphTrust runner uses the separately pinned Python binding and its vendored submodule."
+  },
+  "integrity_policy": "The Kaggle metadata API returns file names and sizes, not cryptographic file checksums. Null checksums are unknown, never asserted verified. Check names and sizes on the attached version, compute SHA-256 before inference, and preserve these hashes plus the built wheel hash, build configuration and resolved package environment. A different version, file, quantization or runtime requires a documented lock amendment before model outcomes are inspected.",
+  "interpretation": "QAT Q4_0 GGUF and Transformers studies have different checkpoint quantization and runtime. Compare corruption robustness within each model/runtime independently; no clean model-size causal comparison.",
+  "sources": [
+    "https://ai.google.dev/gemma/docs/core",
+    "https://ai.google.dev/gemma/docs/integrations/llamacpp",
+    "https://github.com/abetlen/llama-cpp-python/tree/1652066e0af45f2313b339670ef9555e8a54e545",
+    "https://github.com/abetlen/llama-cpp-python/blob/1652066e0af45f2313b339670ef9555e8a54e545/README.md",
+    "https://github.com/abetlen/llama-cpp-python/blob/1652066e0af45f2313b339670ef9555e8a54e545/llama_cpp/llama_chat_format.py",
+    "https://github.com/ggml-org/llama.cpp/blob/0c1e57098bba43ac29e6e3b677cdceebdd22334f/src/models/gemma4.cpp"
+  ],
+  "raw_metadata_evidence": "runs/reproduction-review/gguf-metadata/"
+}

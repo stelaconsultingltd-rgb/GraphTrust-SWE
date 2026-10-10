@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "graphtrust-swe"
+version = "0.1.0"
+description = "Controlled graph-evidence robustness experiments for software engineering agents"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+dependencies = []
+
+[project.optional-dependencies]
+corpus = ["pyarrow>=18"]
+plots = ["matplotlib>=3.9"]
+gemma = ["torch>=2.6", "transformers==5.19.0", "accelerate>=1.0", "jinja2==3.1.6"]
+gguf = ["llama-cpp-python>=0.3"]
+notebooks = ["nbformat>=5.10", "nbclient>=0.10", "ipykernel>=6.29"]
+
+[project.scripts]
+graphtrust = "graphtrust.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+graphtrust = ["resources/protocol.json", "resources/synthetic/*.py", "resources/synthetic/README.md"]
+

@@ -1,0 +1,40 @@
+{
+  "counts": {
+    "dev": 23,
+    "test": 300
+  },
+  "dataset": "princeton-nlp/SWE-bench_Lite",
+  "files": {
+    "cases.jsonl": "d95c9ff70b89da9e0d82eee1ea89558403d4f4a7354d0d20c95247d124cef066",
+    "evaluator/gold.jsonl": "3765a63f07acac4f9e3d2e5779ad65ebe1be1e70925fc7ef6855cabc46a724ac",
+    "evaluator/raw/data/dev-00000-of-00001.parquet": "8312f321838051849d2fa7c6ca071244733a3e90bb517ff6ca8186f722199b5c",
+    "evaluator/raw/data/test-00000-of-00001.parquet": "7a21f37b8bc179c7db5beeb14e88ac538ba283455c776e6b2535bbfb6e3551b4"
+  },
+  "license_note": "Preserve upstream dataset and repository licenses; gold is evaluator-only.",
+  "repositories": {
+    "dev": {
+      "marshmallow-code/marshmallow": 2,
+      "pvlib/pvlib-python": 5,
+      "pydicom/pydicom": 5,
+      "pylint-dev/astroid": 5,
+      "pyvista/pyvista": 1,
+      "sqlfluff/sqlfluff": 5
+    },
+    "test": {
+      "astropy/astropy": 6,
+      "django/django": 114,
+      "matplotlib/matplotlib": 23,
+      "mwaskom/seaborn": 4,
+      "pallets/flask": 3,
+      "psf/requests": 6,
+      "pydata/xarray": 5,
+      "pylint-dev/pylint": 6,
+      "pytest-dev/pytest": 17,
+      "scikit-learn/scikit-learn": 23,
+      "sphinx-doc/sphinx": 16,
+      "sympy/sympy": 77
+    }
+  },
+  "revision": "6ec7bb89b9342f664a54a6e0a6ea6501d3437cc2",
+  "status": "acquired_not_protocol_frozen"
+}

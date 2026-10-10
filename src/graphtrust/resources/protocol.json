@@ -1,0 +1,87 @@
+{
+  "checker_access_scope": "full source-derived graph from identical repository snapshot; may exceed truncated model source pack",
+  "conditions": [
+    "source_only",
+    "clean",
+    "deleted",
+    "rewired",
+    "clean_checked",
+    "rewired_checked"
+  ],
+  "corruption_seed_model": 1729,
+  "corruption_seeds_cpu": [
+    1729,
+    2718,
+    3141
+  ],
+  "dataset": "princeton-nlp/SWE-bench_Lite",
+  "deadline_perth": "2026-11-13T07:59:00+08:00",
+  "development_per_repository": 5,
+  "development_repositories": [
+    "sqlfluff/sqlfluff",
+    "pydicom/pydicom",
+    "pylint-dev/astroid",
+    "pvlib/pvlib-python"
+  ],
+  "gpu_quota_budget_hours": 40,
+  "holdout_per_repository": 10,
+  "holdout_repositories": [
+    "django/django",
+    "sympy/sympy",
+    "matplotlib/matplotlib",
+    "scikit-learn/scikit-learn",
+    "pytest-dev/pytest",
+    "sphinx-doc/sphinx"
+  ],
+  "internal_submission_date_perth": "2026-11-11",
+  "max_input_tokens": 4000,
+  "max_output_tokens": 256,
+  "max_relation_tokens": 768,
+  "max_source_tokens": 2400,
+  "minimum_candidate_files": 10,
+  "minimum_eligible_edges": 5,
+  "model_edge_rule": "supported_endpoints_and_original_callsite_visible_v1",
+  "name": "GraphTrust-SWE v1",
+  "other_contrasts": "exploratory; no confirmatory multiple-comparison claim",
+  "pilot_issues": 10,
+  "pilot_maximum_timeout_issues_per_condition": 1,
+  "pilot_minimum_graph_citation_rate": 0.25,
+  "pilot_minimum_parse_rate": 0.95,
+  "primary_contrast": {
+    "direction": "right_minus_left",
+    "left": "deleted",
+    "metric": "file_recall_at5",
+    "right": "rewired"
+  },
+  "replication_per_repository": 5,
+  "sampling_seed": 20261010,
+  "sampling_seeds_primary": [
+    17,
+    42
+  ],
+  "sampling_seeds_replication": [
+    17
+  ],
+  "schema_version": 1,
+  "secondary_contrasts": [
+    {
+      "left": "clean",
+      "right": "clean_checked"
+    },
+    {
+      "left": "rewired",
+      "right": "rewired_checked"
+    }
+  ],
+  "severity_cpu": [
+    0.1,
+    0.3,
+    0.5
+  ],
+  "severity_model": 0.3,
+  "source_pack_rule": "bm25_diverse_anchors_fair_supported_neighbors_callsite_v4",
+  "status": "development_not_frozen",
+  "temperature": 0.2,
+  "timeout_seconds": 90,
+  "visible_callsite_coverage": "every retained model relationship must have its original callsite line visible; binding and definition visibility are diagnostics; no gold or model performance selection"
+}
